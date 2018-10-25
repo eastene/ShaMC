@@ -16,13 +16,13 @@ class SharedDataset {
 private:
     std::string path;
     std::string name;
-    long rawFileSize;
+    long rawFileSize{};
     Header header;
     std::pair<RowIndex, int> _shape = std::make_pair(NULL, NULL);
 
 public:
 
-    explicit SharedDataset(std::string path);
+    explicit SharedDataset(std::string& path, char delimiter=',');
 
     std::pair<int, int> shape(){return _shape;}
     Row getRowAsynch(RowIndex index);
