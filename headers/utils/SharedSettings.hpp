@@ -15,6 +15,7 @@ struct SharedSettings{
     double beta = 0.25;
     int mediods = 1 * (int)ceil(2 / alpha);
     int maxAttempts = 2;
+    uint32_t maxiter = 1000;
     bool saveResult = true;
     bool inPlace = true;   // if true add cluster labels to existing dataset, if false, return copy of X with labels
     int nThreads = 1;      // number of threads to use in computation
