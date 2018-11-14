@@ -6,8 +6,8 @@
 #include "../../headers/cluster/ShaMC.hpp"
 #include "../../headers/utils/logger.h"
 
-MultiRow ShaMC::pickMediodsRandom(SharedDataset &X, RowIndex n) {
-    MultiRow _mediods(n);
+MultiRowMap ShaMC::pickMediodsRandom(SharedDataset &X, RowIndex n) {
+    MultiRowMap _mediods(n);
 
     // random number generator
     std::random_device rd;
@@ -19,7 +19,7 @@ MultiRow ShaMC::pickMediodsRandom(SharedDataset &X, RowIndex n) {
     while (_mediods.size() < n) {
         i = dis(gen);
         if (mediods.find(i) == mediods.end()) {
-            _mediods[i] = X.getRowAsynch(i);
+            _mediods[i] = X.getRow(i);
         }
     }
 
@@ -27,22 +27,34 @@ MultiRow ShaMC::pickMediodsRandom(SharedDataset &X, RowIndex n) {
 }
 
 
-void ShaMC::buildTransactionsPar(std::string centriodID, ) {
+void ShaMC::buildTransactionsPar(RowIndex centroidID, SharedDataset &X, PartitionID me, Transactions *transactions) {
+    Row *centroid = X.getRow(centroidID);
+    Row *point;
 
+    for (uint64_t i = 0; i < X.getPartitionSize(me); i++) {
+        if (i == centroid->idx)
+            continue;
+
+        point = X.getRowFromPartition(i, me);
+        for (uint16_t j = 0; j <= point->cells.size(); j++) {
+            if (fabs(point->cells[j] - centroid->cells[j]) <= parameters.width)
+                (*transactions)[i].push_back(j);
+        }
+    }
 }
 
 
 void ShaMC::fit(SharedDataset &X) {
     RowIndex clusterCount = 0;
     RowIndex currentSize = X.shape().first;
-    Partition partition{0, 0};
+    PartitionID me;
     int minPoints = (int) ceil(parameters.alpha * X.shape().first);
     int failedAttempts = 0;
     int iteration;
     bool isOk = true;
     uint32_t i;
 
-#pragma omp parallel shared(clusterCount, failedAttempts, i) private(partition)
+#pragma omp parallel shared(clusterCount, failedAttempts, i) private(me)
     {
         for (i = 0; i < parameters.maxiter; i++) {
             if (isOk) {
@@ -58,7 +70,8 @@ void ShaMC::fit(SharedDataset &X) {
                 iteration = 1;
                 for (const auto &centroid : mediods) {
                     log_info("Iteration " + std::to_string(iteration) + " out of " + std::to_string(mediods.size()));
-                    buildTransactionsPar(centroid.second.id);
+                    Transactions transactions(X.getPartitionSize(me));
+                    buildTransactionsPar(centroid.second->idx, X, me, &transactions);
                 }
             }
 

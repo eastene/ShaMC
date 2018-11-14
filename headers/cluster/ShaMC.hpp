@@ -10,26 +10,30 @@
 #include <unordered_map>
 #include "../utils/SharedDataset.hpp"
 #include "../utils/SharedSettings.hpp"
-#include "../utils/Row.hpp"
 
-typedef std::unordered_map<RowIndex, Row> MultiRow;
+typedef std::vector<uint16_t> DimensionSet;
+typedef std::vector<DimensionSet> Transactions;
 
 class ShaMC {
 private:
-    MultiRow mediods;
+    MultiRowMap mediods;
     SharedSettings parameters;
 
-    MultiRow pickMediodsRandom(SharedDataset &X, RowIndex n);
-    void buildTransactionsPar(std::string centriodID); // TODO derive return type
+    MultiRowMap pickMediodsRandom(SharedDataset &X, RowIndex n);
+
+    void buildTransactionsPar(RowIndex centroidID, SharedDataset &X, PartitionID me, Transactions *transactions);
 
 public:
-    ShaMC(SharedSettings& parameters){this->parameters=parameters;}
+    ShaMC(SharedSettings &parameters) { this->parameters = parameters; }
+
     // find mediods using subspace clustering, overwrites any existing mediods
-    void fit(SharedDataset& X);
+    void fit(SharedDataset &X);
+
     // predict labels using mediods found after fitting
-    SharedDataset predict(SharedDataset& X);
+    SharedDataset predict(SharedDataset &X);
+
     // perform fitting and prediction in single step (useful for training set)
-    SharedDataset fit_predict(SharedDataset& X);
+    SharedDataset fit_predict(SharedDataset &X);
 };
 
 
