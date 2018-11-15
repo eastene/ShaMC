@@ -12,7 +12,7 @@ MultiRowMap ShaMC::pickMediodsRandom(SharedDataset &X, RowIndex n) {
     // random number generator
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<unsigned long> dis(1, X.shape().first);
+    std::uniform_int_distribution<unsigned long> dis(0, X.shape().first - 1);
     RowIndex i;
     RowIndex chosen = 0;
 
@@ -49,35 +49,30 @@ void ShaMC::buildTransactionsPar(RowIndex centroidID, SharedDataset &X, Partitio
 void ShaMC::fit(SharedDataset &X) {
     RowIndex clusterCount = 0;
     RowIndex currentSize = X.shape().first;
-    PartitionID me = 0;
     int minPoints = (int) ceil(parameters.alpha * X.shape().first);
     int failedAttempts = 0;
     int iteration;
-    bool isOk = true;
     uint32_t i;
+    PartitionID me;
+    FPM fpm;
 
-#pragma omp parallel shared(clusterCount, failedAttempts, i) private(me)
-    {
-        for (i = 0; i < parameters.maxiter; i++) {
-            if (isOk) {
-                // termination conditions
-#pragma omp single
-                if (currentSize <= minPoints || failedAttempts >= parameters.maxAttempts) {
-                    isOk = false;
-                }
+    for (i = 0; i < parameters.maxiter; i++) {
 
-                clusterCount = currentSize <= parameters.mediods ? currentSize : parameters.mediods;
-                mediods = pickMediodsRandom(X, clusterCount);
+        // termination conditions
+        if (currentSize <= minPoints || failedAttempts >= parameters.maxAttempts) {
+            break;
+        }
 
-                iteration = 1;
-                for (const auto &centroid : mediods) {
-                    //log_info("Iteration " + std::to_string(iteration) + " out of " + std::to_string(mediods.size()));
-                    std::cout << "Mediod: " << centroid.first << std::endl;
-                    Transactions transactions(X.getPartitionSize(me));
-                    buildTransactionsPar(centroid.first, X, me, &transactions);
-                }
+        clusterCount = currentSize <= parameters.mediods ? currentSize : parameters.mediods;
+        mediods = pickMediodsRandom(X, clusterCount);
+
+        for (const auto &centroid : mediods) {
+#pragma omp parallel for schedule(dynamic) shared(centroid, parameters, minPoints, currentSize, clusterCount, failedAttempts, i) private(me)
+            for (me = 0; me < omp_get_num_threads(); me++) {
+                Transactions transactions(X.getPartitionSize(me));
+                buildTransactionsPar(centroid.first, X, me, &transactions);
+                //fpm.Mine_Patterns_Parallel();
             }
-
         }
     }
 }

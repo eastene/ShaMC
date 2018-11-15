@@ -5,11 +5,13 @@
 #ifndef SHAMC_SHAMC_HPP
 #define SHAMC_SHAMC_HPP
 
-
+#include <omp.h>
 #include <vector>
 #include <unordered_map>
 #include "../utils/SharedDataset.hpp"
 #include "../utils/SharedSettings.hpp"
+
+//#include "../ShaFEM/FPM.h"
 
 typedef std::vector<uint16_t> DimensionSet;
 typedef std::vector<DimensionSet> Transactions;

@@ -12,32 +12,17 @@
 #include <fstream>
 #include <sstream>
 #include <unordered_map>
+#include "ProcessDataBuffer.hpp"
 
 typedef uint8_t PartitionID;
 
 typedef std::vector<std::string> Header;
-typedef uint64_t RowIndex;
+
 
 /*
- *  Row of data set, a single sample or transaction
+ *  Implements a single data-management structure shared by all processes
+ *  any locking/sychronization from a data perspective should be implmented here
  */
-struct Row {
-    std::string id;
-    RowIndex idx;
-    std::vector<double> cells;
-    int clusterMembership;
-};
-/*
- * constructs of multiple Rows
- */
-typedef std::vector<Row*> MultiRow;
-typedef std::unordered_map<RowIndex, Row*> MultiRowMap;
-
-struct Partition {
-    uint64_t start;
-    uint64_t end;
-};
-
 class SharedDataset {
 private:
 
@@ -48,19 +33,14 @@ private:
 
     // shared implementation meta-info
     uint16_t num_threads;
-    uint64_t bufferBytes;
     uint64_t rowsPerThread;
     std::vector<uint64_t> row2byte;
 
     // dataset
     Header header;
     bool hasIndex;
-    std::pair<uint64_t, uint64_t> inMemRange; // range of rows in memory
-    MultiRow inMemBuffer;  // may hold entire dataset if small enough
+    std::vector<ProcessDataBuffer> buffers;  // may hold entire dataset if small enough
     std::pair<RowIndex, int> _shape = std::make_pair(NULL, NULL);
-
-    // auxilliary functions
-    void read2Buffer(RowIndex startRow);
 
 public:
 

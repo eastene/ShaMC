@@ -58,7 +58,6 @@ SharedDataset::SharedDataset(std::string &path, uint16_t num_threads, char delim
     this->hasIndex = index;
 
     this->num_threads = num_threads;
-    this->bufferBytes = bufferBytes;  // default of 10 MiB
 
     std::ifstream datastream;
 
@@ -84,37 +83,34 @@ SharedDataset::SharedDataset(std::string &path, uint16_t num_threads, char delim
     while (std::getline(datastream, line))
         this->row2byte.push_back(datastream.tellg());
 
+    // divide the data among the processes and begin filling process buffers
     this->rowsPerThread = this->row2byte.size() / this->num_threads;
     this->_shape = std::make_pair(this->row2byte.size(), this->header.size());
-    read2Buffer(0);
+    for (int i = 0; i < num_threads; i++)
+        this->buffers.emplace_back(
+                ProcessDataBuffer(bufferBytes, this->row2byte[i * this->rowsPerThread], this->rowsPerThread, this->path));
 }
 
-Row* SharedDataset::getRow(RowIndex index) {
-    if (index >= this->inMemRange.first && index <= this->inMemRange.second)
-        return this->inMemBuffer[index];
-    else {
-        read2Buffer(this->row2byte[index]);
-        return this->inMemBuffer[index];
-    }
+Row *SharedDataset::getRow(RowIndex index) {
+    PartitionID pid = index / this->rowsPerThread;
+    uint64_t offset = index % this->rowsPerThread;
+
+    return this->buffers[pid].getRow(offset);
 }
 
-Row* SharedDataset::getRowAsynch(RowIndex index) {
-    // if already in memory, simply fetch
-    if (index >= this->inMemRange.first && index <= this->inMemRange.second)
-        return this->inMemBuffer[index];
+Row *SharedDataset::getRowAsynch(RowIndex index) {
+    PartitionID pid = index / this->rowsPerThread;
+    uint64_t offset = index % this->rowsPerThread;
 
-    // TODO: implement correctly
-    // asynchronously fectch the row, filling the buffer with new rows
-    //auto f = [&]() { read2Buffer(this->row2byte[index]); };
-    //std::thread t(f);
-
-    //t.join();
-    return this->inMemBuffer[index];
+    return this->buffers[pid].getRowAsynch(offset);
 }
 
-Row* SharedDataset::getRowFromPartition(RowIndex index, PartitionID paritionID) {
-    RowIndex real = paritionID * this->rowsPerThread + index;
-    return getRow(real);
+Row *SharedDataset::getRowFromPartition(RowIndex index, PartitionID paritionID) {
+    return this->buffers[paritionID].getRow(index);
+}
+
+Row *SharedDataset::getRowFromPartitionAsynch(RowIndex index, PartitionID paritionID) {
+    return this->buffers[paritionID].getRowAsynch(index);
 }
 
 uint64_t SharedDataset::getPartitionSize(PartitionID partitionID) {
