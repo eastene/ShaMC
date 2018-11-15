@@ -49,6 +49,7 @@ private:
     // shared implementation meta-info
     uint16_t num_threads;
     uint64_t bufferBytes;
+    uint64_t rowsPerThread;
     std::vector<uint64_t> row2byte;
 
     // dataset
@@ -80,7 +81,7 @@ public:
 
     Row* getRowFromPartitionAsynch(RowIndex index, PartitionID paritionID);
 
-    uint32_t getPartitionSize(PartitionID partitionID);
+    uint64_t getPartitionSize(PartitionID partitionID);
 
     void printMetaInfo();
 };

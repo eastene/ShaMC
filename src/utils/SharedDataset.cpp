@@ -30,6 +30,8 @@ void SharedDataset::read2Buffer(RowIndex startRow) {
                 continue;
             }
             row->cells.push_back(std::stod(column));
+            row->idx = this->inMemRange.second;
+            row->clusterMembership = 0;
             bytes_read += sizeof(double);
         }
 
@@ -81,6 +83,9 @@ SharedDataset::SharedDataset(std::string &path, uint16_t num_threads, char delim
     this->row2byte.push_back(datastream.tellg());
     while (std::getline(datastream, line))
         this->row2byte.push_back(datastream.tellg());
+
+    this->rowsPerThread = this->row2byte.size() / this->num_threads;
+    this->_shape = std::make_pair(this->row2byte.size(), this->header.size());
     read2Buffer(0);
 }
 
@@ -107,17 +112,20 @@ Row* SharedDataset::getRowAsynch(RowIndex index) {
     return this->inMemBuffer[index];
 }
 
-uint32_t SharedDataset::getPartitionSize(PartitionID partitionID) {
+Row* SharedDataset::getRowFromPartition(RowIndex index, PartitionID paritionID) {
+    RowIndex real = paritionID * this->rowsPerThread + index;
+    return getRow(real);
+}
+
+uint64_t SharedDataset::getPartitionSize(PartitionID partitionID) {
     /*
      *  Returns the range of bytes of the dataset assigned to a given partition
      */
 
-    Partition p{0, 0};
-    uint64_t rowsPerThread = this->row2byte.size() / this->num_threads;
-    p.start = partitionID * rowsPerThread;
-    p.end = p.start + rowsPerThread;
+    uint64_t start = partitionID * this->rowsPerThread;
+    uint64_t end = _shape.first >= start + this->rowsPerThread ? start + this->rowsPerThread : _shape.first;
 
-    return p;
+    return end - start;
 }
 
 void SharedDataset::printMetaInfo() {
