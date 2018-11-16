@@ -13,6 +13,7 @@
 #include <sstream>
 #include <unordered_map>
 #include "ProcessDataBuffer.hpp"
+#include "SharedSettings.hpp"
 
 typedef uint8_t PartitionID;
 
@@ -30,6 +31,7 @@ private:
     std::string path;
     std::string name;
     char delimiter;
+    SharedSettings parameters;
 
     // shared implementation meta-info
     uint16_t num_threads;
@@ -44,12 +46,7 @@ private:
 
 public:
 
-    explicit SharedDataset(std::string &path,
-                           uint16_t num_threads = 1,
-                           char delimiter = ',',
-                           bool header = true,              // 1st row is header
-                           bool index = true,               // 1st column is index
-                           uint64_t bufferBytes = 10485760);
+    explicit SharedDataset(std::string &path, SharedSettings &parameters);
 
     std::pair<RowIndex, int> shape() { return _shape; }
 
@@ -61,7 +58,11 @@ public:
 
     Row* getRowFromPartitionAsynch(RowIndex index, PartitionID paritionID);
 
+    MultiRowMap pickMediodsRandom(uint16_t n);
+
     uint64_t getPartitionSize(PartitionID partitionID);
+
+    const SharedSettings getSettings() {return parameters;}
 
     void printMetaInfo();
 };

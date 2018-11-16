@@ -14,8 +14,17 @@ add_executable(ShaMC main.cpp
         src/utils/SharedDataset.cpp
         headers/utils/SharedDataset.hpp
         headers/utils/SharedSettings.hpp
+        src/utils/ProcessDataBuffer.cpp
+        headers/utils/ProcessDataBuffer.hpp
         headers/utils/PortMacros.hpp
         src/cluster/ShaMC.cpp
         headers/cluster/ShaMC.hpp
         headers/utils/logger.h
-        )
+        src/ShaFEM/DataObject.cpp
+        headers/ShaFEM/DataObject.h
+        src/utils/ProcessTransactions.cpp
+        headers/utils/ProcessTransactions.hpp
+        src/ShaFEM/FPM_modified.cpp
+        headers/ShaFEM/FPM_modified.hpp
+        src/ShaFEM/buffer.cpp
+        headers/ShaFEM/buffer.h)

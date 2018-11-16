@@ -4,14 +4,17 @@
 #include "headers/cluster/ShaMC.hpp"
 int main() {
     std::string path = "/home/evan/CLionProjects/ShaMC/data/soma_ae.csv";
-    SharedDataset X(path, 4);
-    X.printMetaInfo();
 
-    omp_set_num_threads(4);
+    int num_threads = 1;
+    omp_set_num_threads(num_threads);
 
     SharedSettings ss;
     ss.maxiter = 2;
-    ss.nThreads = 4;
+    ss.nThreads = num_threads;
+
+    SharedDataset X(path, ss);
+    X.printMetaInfo();
+
     ShaMC mc(ss);
     mc.fit(X);
 

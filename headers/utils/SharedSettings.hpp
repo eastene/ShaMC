@@ -21,6 +21,11 @@ struct SharedSettings{
     int nThreads = 1;      // number of threads to use in computation
     std::string dataPath = "";
     std::string resultPath = "";
+    char delimiter = ',';
+    bool header = true;               // 1st row is header
+    bool index = true;                // 1st column is index
+    uint64_t bufferBytes = 10485760;  // 10MiB
+
 };
 
 

@@ -277,8 +277,8 @@ class Countlist
 {
 public:
 	Countlist();
-	~Countlist(){ if (counts) {delete[] counts; counts = 0;}}
-	void destroy() { if (counts) {delete[] counts; counts = 0;}}
+	//~Countlist(){ if (counts) {delete[] counts; counts = 0;}}
+	//void destroy() { if (counts) {delete[] counts; counts = 0;}}
 	void count(int item);
 	int getItemCount(int threshold=1);
   	int &operator[](int index) { return counts[index]; } 

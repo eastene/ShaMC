@@ -982,11 +982,11 @@ void FPM::LFEM(char *infile,char *outfile,int minsup)
 	Mine_Patterns(infile,outfile,minsup,0,2);
 }
 //-----------------------------------------------------------------------------------------
-void FPM::Mine_Patterns_Parallel(char *infile,char *outfile,int minsup,int thres_K,int methods,Info* info)
+// Modified by Evan Stene from the original source
+void FPM::Mine_Patterns_Parallel(ProcessDataBuffer &buff, int minsup,int thres_K,int methods,Info* info)
 {
 	//Threshold K
 	thres_k = thres_K;
-	InputData indata(infile);
 	Countlist pcount;
 	int	threadnum = omp_get_num_threads();
 	int	threadid = omp_get_thread_num();
@@ -997,9 +997,7 @@ void FPM::Mine_Patterns_Parallel(char *infile,char *outfile,int minsup,int thres
 
 	info->pfpm[threadid] = this;
 
-	///indata.Open(infile);
-	indata.SetDataPartition(threadid,threadnum);
-	trans = indata.CountItemFrequence(&pcount);
+	trans = buff.CountItemFrequence(&pcount);
 	
 
 	//Syncrohnize all private count list into an global count list
@@ -1064,7 +1062,6 @@ void FPM::Mine_Patterns_Parallel(char *infile,char *outfile,int minsup,int thres
 	headlist.destroy();
 
 	//Scan database twice to contruct the header table and FP-tree
-	indata.SetDataPartition(threadid,threadnum);
 	Build_FP_Tree(&indata);
 	indata.Close(); 
 

@@ -54,7 +54,7 @@ bool ProcessDataBuffer::readRows() {
             this->inMemRange.second++;
         }
 
-        if (this->inMemRange.second >= this->numRows) {
+        if (this->inMemRange.second > this->numRows || datastream.eof()) {
             this->moreData = false;
             break;
         }
@@ -62,6 +62,7 @@ bool ProcessDataBuffer::readRows() {
 
     this->nextByte = datastream.tellg();
     datastream.close();
+    //this->inMemRange.second--; // decrease by 1 since rows are 0-based
 
     return true;
 }

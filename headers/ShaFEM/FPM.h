@@ -110,7 +110,7 @@ public:
 	void Build_FP_Tree_Parallel(InputData *indata,int minsup);
 	void Mine_Patterns(char *infile,char *outfile,int minsup,int thres_K,int methods);
 	void MergeOutput(char *ScrFileName,char *DesFileName);
-	void Mine_Patterns_Parallel(char *infile,char *outfile,int minsup,int thres_K,int methods,Info* info);
+	void Mine_Patterns_Parallel(int minsup,int thres_K,int methods,Info* info);
 	void MergeOutput(char *DesFileName);
 
 	FPM() {heads=0;root=0;twoset=0;}

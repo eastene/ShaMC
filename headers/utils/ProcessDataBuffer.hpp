@@ -50,6 +50,9 @@ public:
     Row *getRow(RowIndex index);
 
     Row *getRowAsynch(RowIndex index);
+
+    std::pair<uint64_t, uint64_t> getMemRange() {return inMemRange;}
+
 };
 
 /*

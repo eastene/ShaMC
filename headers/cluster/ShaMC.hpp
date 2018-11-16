@@ -13,20 +13,13 @@
 
 //#include "../ShaFEM/FPM.h"
 
-typedef std::vector<uint16_t> DimensionSet;
-typedef std::vector<DimensionSet> Transactions;
-
 class ShaMC {
 private:
     MultiRowMap mediods;
     SharedSettings parameters;
 
-    MultiRowMap pickMediodsRandom(SharedDataset &X, RowIndex n);
-
-    void buildTransactionsPar(RowIndex centroidID, SharedDataset &X, PartitionID me, Transactions *transactions);
-
 public:
-    ShaMC(SharedSettings &parameters) { this->parameters = parameters; }
+    explicit ShaMC(SharedSettings &parameters) { this->parameters = parameters; }
 
     // find mediods using subspace clustering, overwrites any existing mediods
     void fit(SharedDataset &X);
