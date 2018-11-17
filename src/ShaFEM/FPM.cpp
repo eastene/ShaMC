@@ -982,7 +982,6 @@ void FPM::LFEM(char *infile,char *outfile,int minsup)
 	Mine_Patterns(infile,outfile,minsup,0,2);
 }
 //-----------------------------------------------------------------------------------------
-// Modified by Evan Stene from the original source
 void FPM::Mine_Patterns_Parallel(ProcessDataBuffer &buff, int minsup,int thres_K,int methods,Info* info)
 {
 	//Threshold K

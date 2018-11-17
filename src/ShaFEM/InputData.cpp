@@ -31,8 +31,8 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #include <math.h>
-#include "DataObject.h"
-#include "InputData.h"
+#include "../../headers/ShaFEM/DataObject.h"
+#include "../../headers/ShaFEM/InputData.h"
 
 //----------------------------------------------------------------------------------
 //Open the Input File 
@@ -41,7 +41,7 @@ bool InputData::Open(char *FileName)
 {
 	pos = 0; 
 
-	file = fopen(FileName,"rt"); 
+	file = fopen(FileName, "rt");
 	filesize = GetFileSize();
 
 	if (file) buffer = new char[IO_BUFFER_SIZE];
@@ -111,7 +111,7 @@ Transaction* InputData::GetTransaction()
 		if (pos==0)
 		{		
 			//read data into buffer if the buffer is empty
-			size = fread(buffer,sizeof(char),IO_BUFFER_SIZE, file);
+			size = fread(buffer, sizeof(char), IO_BUFFER_SIZE, file);
 			buf = buffer;
 
 			unsigned long tmppos = ftell(file); //current file pos

@@ -2,11 +2,13 @@
 // Created by evan on 10/25/18.
 //
 
+#include <omp.h>
 #include <random>
 #include "../../headers/cluster/ShaMC.hpp"
 #include "../../headers/utils/logger.h"
 #include "../../headers/ShaFEM/FPM_modified.hpp"
 #include "../../headers/utils/ProcessTransactions.hpp"
+#include "../../headers/ShaFEM/FPM.h"
 
 void ShaMC::fit(SharedDataset &X) {
     RowIndex clusterCount = 0;
@@ -17,7 +19,8 @@ void ShaMC::fit(SharedDataset &X) {
     uint32_t i;
     PartitionID me;
     double start, end;
-    FPM_modified fpm;
+    //FPM_modified fpm;
+    FPM fpm;
 
     for (i = 0; i < parameters.maxiter; i++) {
         start = omp_get_wtime();
@@ -33,9 +36,11 @@ void ShaMC::fit(SharedDataset &X) {
             Info sharedInfo;
 #pragma omp parallel for schedule(dynamic) shared(centroid, parameters, minPoints, currentSize, clusterCount, failedAttempts, i) private(me)
             for (me = 0; me < omp_get_num_threads(); me++) {
-                ProcessTransactions::ProcessTransactions transactions(X.getPartitionSize(me));
+                ProcessTransactions transactions(X.getPartitionSize(me));
                 transactions.buildTransactionsPar(centroid.first, X, me);
-                fpm.Mine_Patterns_Parallel(transactions, 5, 4, 1, &sharedInfo);
+                // TODO: try using FPGrowth and writing to disk, then using in-memory data structures
+                fpm.DFEM();
+                //fpm.Mine_Patterns_Parallel(transactions, 5, 4, 1, &sharedInfo);
             }
         }
 

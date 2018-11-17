@@ -51,9 +51,65 @@ bool FPM_modified::Create(int ItemCount, int AverageLenght, memory *MemoryBuffer
     return true;
 }
 
+void FPM_modified::Grow(int *t, int size, int count, bool order) {
+    int i,j,*ts;
+    Node *par,*me;
+    Head *head;
+    par = root;
+
+    for (i = (size - 1) ; (i > 0) &&(t[i]>=avglenght)  ;i--)
+    {
+        ts = twoset + (avglenght + t[i]-1)*(t[i]-avglenght)/2;
+        for (j = 0 ; j < i ;j++)  ts[t[j]] += count;
+    }
+
+
+    for (i = 0; par->child && (i < size)   ; i++,t++)
+    {
+        me = par->child;
+        while((me) && (me->id != *t)) me = me->sibling;
+
+        //if not found
+        if (!me) break;
+
+        me->count += count;
+        par = me;
+    }
+
+    if (i == size) return;
+
+    me = (Node*)fp_buf->newbuf(size-i, sizeof(Node));
+//	me = new Node[size-i];
+
+    for (; i < size; i++,t++)
+    {
+        //add to first
+        head = heads + *t;
+        me->init(*t,count,((par == root)?0:par),0,par->child,head->next);
+        par->child = head->next = me;
+        head->nodes++;
+        if (head->last==0) head->last = me;
+        par = me;
+        me++;
+    }
+}
+
+int FPM_modified::Build_FP_Tree(ProcessTransactions &data) {
+    Transaction *t;
+    int trans=0;
+
+    while(t = data.GetTransaction())
+//	while(t = data->GetTransaction())
+    {
+        Grow(t->items,t->size,t->count);
+        trans +=t->count;
+    }
+    return trans;
+}
+
 // Modified by Evan Stene from the original source to fit the use case of clustering algorithm
 void
-FPM_modified::Mine_Patterns_Parallel(ProcessTransactions::ProcessTransactions &pt, int minsup, int thres_K, int methods,
+FPM_modified::Mine_Patterns_Parallel(ProcessTransactions &pt, int minsup, int thres_K, int methods,
                                      Info *info) {
     //Threshold K
     thres_k = thres_K;
@@ -64,7 +120,7 @@ FPM_modified::Mine_Patterns_Parallel(ProcessTransactions::ProcessTransactions &p
 
     timetotal = timecount = omp_get_wtime();
 
-    //info->pfpm[threadid] = this;
+    info->pfpm[threadid] = this;
 
     //Syncrohnize all private count list into an global count list
 #pragma omp critical
@@ -121,13 +177,12 @@ FPM_modified::Mine_Patterns_Parallel(ProcessTransactions::ProcessTransactions &p
     }
 
     //Sort Descendingly the Head Node List
-    indata.SetDataMask(info->maxitems, &headlist, 0, 1);
+    pt.SetDataMask(info->maxitems, &headlist, 0, 1);
     for (int i = 0; i < itemno; i++) heads[i].init(headlist[i].id, headlist[i].count, 0, 0);
     headlist.destroy();
-/*
+
     //Scan database twice to contruct the header table and FP-tree
-    Build_FP_Tree(&indata);
-    indata.Close();
+    Build_FP_Tree(pt);
 
     //merge local tree into global tree
 #pragma omp barrier
@@ -188,7 +243,7 @@ FPM_modified::Mine_Patterns_Parallel(ProcessTransactions::ProcessTransactions &p
 
 #pragma omp atomic
     info->totalitemsets += outdata->setcount;
-*/
+
     //timing
     timeio = 0;
 

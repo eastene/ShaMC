@@ -5,13 +5,17 @@
 #ifndef SHAMC_FPM_MODIFIED_HPP
 #define SHAMC_FPM_MODIFIED_HPP
 
+
 #define MAX_ARRAY_SIZE 16*124*1024
+#define K_STEP 32
 #define K_LEVEL 9
 #define LOOKUP_TABLE_SIZE 256
-
+#define MAX_NUM_THREAD 128
 
 #include "../utils/ProcessTransactions.hpp"
 #include "buffer.h"
+
+class FPM_modified;
 
 struct Info {
     int *globalcount;
@@ -20,12 +24,13 @@ struct Info {
     int totalitemsets;
     int maxitems;
     int currentthread;
+    FPM_modified	*pfpm[MAX_NUM_THREAD];	//addjust the array if want more current thread
     //OutputData*	out;
 
     Info() {
         totaltrans = totalcount = totalitemsets = maxitems = currentthread = 0;
         globalcount = 0;
-        //pfpm = 0;
+        pfpm = 0;
         //out = 0;
     }
 
@@ -61,7 +66,10 @@ public:
     bool Create(int ItemCount, int AverageLenght, memory *MemoryBuffer, int *TempBuffer, int *OneCountArray,
                 int *OnePosArray, unsigned int *PatternsArray);
 
-    void Mine_Patterns_Parallel(ProcessTransactions::ProcessTransactions &pt, int minsup, int thres_K, int methods,
+    void Grow(int* t, int size,int count,bool order=true);
+    int Build_FP_Tree(ProcessTransactions &data);
+
+    void Mine_Patterns_Parallel(ProcessTransactions &pt, int minsup, int thres_K, int methods,
                                 Info *info);
 };
 

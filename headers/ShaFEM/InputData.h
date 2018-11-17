@@ -31,6 +31,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #include <set>
+#include <fstream>
 
 using namespace std;
 
@@ -52,7 +53,7 @@ class InputData
 	set<Transaction>::iterator ptran;	
 	unsigned long filepos; //size of whole file or data part it responsible for
 	unsigned long filesize; //size of whole file or data part it responsible for
-	FILE	*file;
+	std::fstream	*file;
 	bool	Flag;
 	
 public:
