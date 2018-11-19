@@ -44,7 +44,7 @@ SharedDataset::SharedDataset(std::string &path, SharedSettings &parameters) {
     }
 
     // find the beginning byte values of each row
-    while (std::getline(datastream, line))
+    while (std::getline(datastream, line) && !datastream.eof())
         this->row2byte.push_back(datastream.tellg());
 
     this->rowsPerThread = this->row2byte.size() / this->num_threads;
@@ -128,7 +128,7 @@ void SharedDataset::printMetaInfo() {
     for (auto &buffer : this->buffers) {
         std::cout << "    Thread Buffer #" << std::to_string(buff) << ": "
                   << buff * this->rowsPerThread + buffer.getMemRange().first << " - "
-                  << buff * this->rowsPerThread + buffer.getMemRange().second << std::endl;
+                  << buff * this->rowsPerThread + buffer.getMemRange().second - 1 << std::endl;
         buff++;
     }
 

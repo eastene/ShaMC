@@ -1,9 +1,44 @@
-//
-// Created by evan on 11/16/18.
-//
+/*
+   Author:  Lan Vu
 
-#include <cstring>
-#include <iostream>
+Copyright (c) 2017, University of Colorado Denver All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+   - Redistributions of source code must retain the above copyright notice,
+       this list of conditions and the following disclaimer.
+   - Redistributions in binary form must reproduce the above copyright
+       notice, this list of conditions and the following disclaimer in the
+       documentation and/or other materials provided with the distribution.
+   - Neither the name of University of Colorado Denver nor the names of its
+       contributors may be used to endorse or promote products derived from
+       this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+THE POSSIBILITY OF SUCH DAMAGE.
+
+*/
+
+
+/*
+ *
+ * This code has been modified from the original source written by Lan Vu.
+ * It has been changed to work with in-memory transactions from the
+ * subspace clustering algorithm, but performs FPGrowth in the same
+ * manner as described in the original code.
+ *
+ */
+
 #include "../../headers/ShaFEM/FPM_modified.hpp"
 
 int OneCount[LOOKUP_TABLE_SIZE];
@@ -31,7 +66,7 @@ bool FPM_modified::Create(int ItemCount, int AverageLenght, memory *MemoryBuffer
     onePos = OnePosArray;
     Patterns = PatternsArray;
     itemno = ItemCount;
-    avglenght = AverageLenght;
+    avglength = AverageLenght;
 
     //create heads
     heads = (Head *) fp_buf->newbuf(ItemCount, sizeof(Head));
@@ -46,7 +81,7 @@ bool FPM_modified::Create(int ItemCount, int AverageLenght, memory *MemoryBuffer
         //create twoset : 2 lenght itemset count
         twoset = (int *) fp_buf->newbuf(size, sizeof(int));
         memset(twoset, 0, sizeof(int) * size);
-    } else avglenght = ItemCount;
+    } else avglength = ItemCount;
 
     return true;
 }
@@ -57,8 +92,8 @@ void FPM_modified::Grow(int *t, int size, int count, bool order) {
     Head *head;
     par = root;
 
-    for (i = (size - 1); (i > 0) && (t[i] >= avglenght); i--) {
-        ts = twoset + (avglenght + t[i] - 1) * (t[i] - avglenght) / 2;
+    for (i = (size - 1); (i > 0) && (t[i] >= avglength); i--) {
+        ts = twoset + (avglength + t[i] - 1) * (t[i] - avglength) / 2;
         for (j = 0; j < i; j++) ts[t[j]] += count;
     }
 
@@ -92,15 +127,21 @@ void FPM_modified::Grow(int *t, int size, int count, bool order) {
 }
 
 int FPM_modified::Build_FP_Tree(ProcessTransactions &data) {
-    Transaction *t;
+    Transaction* t;
     int trans = 0;
 
-    while (t = data.GetTransaction())
-//	while(t = data->GetTransaction())
-    {
-        Grow(t->items, t->size, t->count);
-        trans += t->count;
+    try{
+        while (data.moreTransactions())
+        {
+            t = data.getTransaction();
+            Grow(t->items, t->size, t->count); // convert vector to array
+            trans += t->count;
+        }
+    } catch (OutOfRangeException &e) {
+        // do nothing, end of transactions reached
+
     }
+
     return trans;
 }
 
@@ -124,276 +165,264 @@ void FPM_modified::UpdateK(int NewPatternNum, int DBSize) {
     }
 }
 
-void FPM_modified::DFP_Tree_Mining(int minsup, OutputData *outfile, int size, int threadid, int threadnum) {
-    //for each head list, create a project tree and find the frequent item
-    for(int i = 0; i<itemno ; i++)
-    {
-        //this items is not be mined , used in case of parallel
-        //if ( (size ==1) && (i%threadnum) != threadid ) continue;
+int FPM_modified::GetCount(const int *trans, TID_DATA tid) {
+    int count = 0;
+    int j, i = 0;
 
-        Node *n,*p;
-        Head* head = heads + i;
-        Node* node = head->next;
+    while (tid > 0) {
+        if (tid & 0x00000001) count += trans[i];
+        j = onePos[tid & 0x000000FF];
+        tid >>= j;
+        i += j;
+    }
+    return count;
+}
+
+//same size vector bit
+int FPM_modified::Intersect(const Item x, const Item y, Item &xy, int *trans, int size) {
+    for (int i = 0; i < size; i++) {
+        xy.tid[i] = x.tid[i] & y.tid[i];
+
+        if (xy.tid[i]) xy.count += GetCount(trans + i * TID_SIZE, xy.tid[i]);
+
+    }
+
+    return xy.count;
+}
+
+void FPM_modified::DFP_Tree_Mining(int minsup, SharedSubspace *subspace, int size, int threadid, int threadnum) {
+    // for each head list, create a project tree and find the frequent item
+    for (int i = 0; i < itemno; i++) {
+        // this items is not be mined , used in case of parallel
+        // if ( (size ==1) && (i%threadnum) != threadid ) continue;
+
+        Node *n, *p;
+        Head *head = heads + i;
+        Node *node = head->next;
 
         //print output
-        if (outfile) outfile->write(head->id,head->count,size);
+        if (subspace) subspace->addDimensionSet(head->id, head->count, size);
 
         //print output but not do recursively mine
-        if (head->nodes == 1)
-        {
+        if (head->nodes == 1) {
             //single path
-            if (node->parent && outfile)
-            {
-                int oldset = outfile->setcount;
+            if (node->parent && subspace) {
+                int oldset = subspace->getSetCount();
                 int j = 0;
-                for (n = node->parent ; n ; n = n->parent) tmpbuf[j++] = heads[n->id].id;
-                outfile->write(tmpbuf,j,0,head->count,size+1);
-                UpdateK(outfile->setcount - oldset,1);
+                for (n = node->parent; n; n = n->parent) tmpbuf[j++] = heads[n->id].id;
+                subspace->addDimensionSet(tmpbuf, j, 0, head->count, size + 1);
+                UpdateK(subspace->getSetCount() - oldset, 1);
             }
             continue;
         }
 
-        int totalcount,itemcount,j,*ts;
+        int totalcount, itemcount, j, *ts;
         int *t = tmpbuf;
-        int	*oldid = tmpbuf;
-        int	*newid = tmpbuf + i  ;
+        int *oldid = tmpbuf;
+        int *newid = tmpbuf + i;
         oldid = t;
         totalcount = itemcount = 0;
 
         //the ts include two halfs: one
-        if (i<avglenght)
-        {
-            ts = tmpbuf + i*2 ;
-            memset(ts,0,sizeof(int)*i);
-            for (n = node ; n; n = n->next)
-                for (p = n->parent; p ; p = p->parent)
+        if (i < avglength) {
+            ts = tmpbuf + i * 2;
+            memset(ts, 0, sizeof(int) * i);
+            for (n = node; n; n = n->next)
+                for (p = n->parent; p; p = p->parent)
                     ts[p->id] += n->count;
-        }
-        else ts = twoset + (avglenght+i-1)*(i-avglenght)/2;
+        } else ts = twoset + (avglength + i - 1) * (i - avglength) / 2;
 
-        for (j=0 ; j < i  ;j++)
-        {
-            if (ts[j] >= minsup)
-            {	totalcount += ts[j];
+        for (j = 0; j < i; j++) {
+            if (ts[j] >= minsup) {
+                totalcount += ts[j];
                 oldid[itemcount] = j;
                 newid[j] = itemcount++;
-            }
-            else newid[j] = -1;
+            } else newid[j] = -1;
         }
 
-        UpdateK(itemcount,head->nodes);
+        UpdateK(itemcount, head->nodes);
 
-        if (itemcount >1)
-        {
-            if (head->nodes <= thres_k)
-            {
+        if (itemcount > 1) {
+            if (head->nodes <= thres_k) {
                 //same bit size array but save memory
                 //double runtime =  clock()/(float)CLOCKS_PER_SEC;
-                int tcount = head->nodes/TID_SIZE + ((head->nodes%TID_SIZE)?1:0);
-                int MC=0;			//markcount for memory
-                unsigned int MR=0;	//markrest for memory
-                char* MB;			//markbuf for memory
-                MB=fp_buf->bufmark(&MR, &MC);
-                int *trans = (int*)fp_buf->newbuf(head->nodes,sizeof(int));
-                Item *items = (Item*)fp_buf->newbuf(itemcount,sizeof(Item));
-                TID_DATA *tid = (TID_DATA*)fp_buf->newbuf(tcount*itemcount,sizeof(TID_DATA));
-                int *sameitems = (int*)fp_buf->newbuf(i,sizeof(int));
+                int tcount = head->nodes / TID_SIZE + ((head->nodes % TID_SIZE) ? 1 : 0);
+                int MC = 0;            //markcount for memory
+                unsigned int MR = 0;    //markrest for memory
+                char *MB;            //markbuf for memory
+                MB = fp_buf->bufmark(&MR, &MC);
+                int *trans = (int *) fp_buf->newbuf(head->nodes, sizeof(int));
+                Item *items = (Item *) fp_buf->newbuf(itemcount, sizeof(Item));
+                TID_DATA *tid = (TID_DATA *) fp_buf->newbuf(tcount * itemcount, sizeof(TID_DATA));
+                int *sameitems = (int *) fp_buf->newbuf(i, sizeof(int));
                 Item *it;
-                int h,m;
+                int h, m;
 
-                memset(tid,0,sizeof(TID_DATA)*tcount*itemcount);
+                memset(tid, 0, sizeof(TID_DATA) * tcount * itemcount);
 
-                for (j=0 ; j < itemcount  ;j++)
-                {
-                    items[j].tid = tid + j*tcount;
+                for (j = 0; j < itemcount; j++) {
+                    items[j].tid = tid + j * tcount;
                     items[j].id = heads[oldid[j]].id;
                     items[j].count = ts[oldid[j]];
                 }
 
-                for (j=0, n = node ; n  ; j++, n = n->next)
-                {
+                for (j = 0, n = node; n; j++, n = n->next) {
                     trans[j] = n->count;
                     h = j / TID_SIZE;
-                    m = j% TID_SIZE;
+                    m = j % TID_SIZE;
 
-                    for (p = n->parent; p ; p = p->parent)
-                    {
-                        if (ts[p->id] >= minsup)
-                        {
+                    for (p = n->parent; p; p = p->parent) {
+                        if (ts[p->id] >= minsup) {
                             it = items + newid[p->id];
 
                             it->tid[h] |= (0x00000001 << m);
                         }
                     }
                 }
-                TID_Bit_Vector_Mining(items,itemcount,trans,tcount,minsup,outfile,size + 1,sameitems,0);
+                TID_Bit_Vector_Mining(items, itemcount, trans, tcount, minsup, subspace, size + 1, sameitems, 0);
                 //TIDListRuntime += ( clock()/(float)CLOCKS_PER_SEC - runtime);
                 fp_buf->freebuf(MR, MC, MB);
-            }
-            else
-            {
+            } else {
                 //UpdateK(itemcount,head->nodes);
-                int MC=0;			//markcount for memory
-                unsigned int MR=0;	//markrest for memory
-                char* MB;			//markbuf for memory
-                MB=fp_buf->bufmark(&MR, &MC);
-                FPM_modified* ctree = (FPM_modified*)fp_buf->newbuf(1,sizeof(FPM_modified));
-                ctree->Create(itemcount,totalcount/head->count,fp_buf,tmpbuf,oneCount,onePos,Patterns);
-                for (j=0 ; j < itemcount  ;j++) ctree->heads[j].init(heads[oldid[j]].id,ts[oldid[j]],0,0);
+                int MC = 0;            //markcount for memory
+                unsigned int MR = 0;    //markrest for memory
+                char *MB;            //markbuf for memory
+                MB = fp_buf->bufmark(&MR, &MC);
+                FPM_modified *ctree = (FPM_modified *) fp_buf->newbuf(1, sizeof(FPM_modified));
+                ctree->Create(itemcount, totalcount / head->count, fp_buf, tmpbuf, oneCount, onePos, Patterns);
+                for (j = 0; j < itemcount; j++) ctree->heads[j].init(heads[oldid[j]].id, ts[oldid[j]], 0, 0);
 
                 //for each node this head list i
-                for (n = node ; n; n = n->next)
-                {
+                for (n = node; n; n = n->next) {
                     //traverse from bottom to top to create a transaction with count n->count
-                    for (j = i,p = n->parent; p ; p = p->parent)
-                    {
-                        if (newid[p->id] != -1) t[--j] = newid[p->id] ;
+                    for (j = i, p = n->parent; p; p = p->parent) {
+                        if (newid[p->id] != -1) t[--j] = newid[p->id];
                     }
                     //create the ctree from the current tree
                     if (j != i) ctree->Grow(t + j, i - j, n->count);
                 }
 
                 //then mine it
-                ctree->DFP_Tree_Mining(minsup,outfile,size + 1,threadid,threadnum);
+                ctree->DFP_Tree_Mining(minsup, subspace, size + 1, threadid, threadnum);
                 fp_buf->freebuf(MR, MC, MB);
             }
-        }
-        else if (itemcount == 1 && outfile)
-        {
-            UpdateK(1,head->nodes);
-            outfile->write(heads[oldid[0]].id,ts[oldid[0]],size+1);
+        } else if (itemcount == 1 && subspace) {
+            UpdateK(1, head->nodes);
+            subspace->addDimensionSet(heads[oldid[0]].id, ts[oldid[0]], size + 1);
         }
     }
 }
 
-void FPM_modified::DFP_Tree_Mining_Parallel(int minsup, OutputData *outfile, int size, int threadid, int threadnum) {
+void
+FPM_modified::DFP_Tree_Mining_Parallel(int minsup, SharedSubspace *subspace, int size, int threadid, int threadnum) {
     //for each head list, create a project tree and find the frequent item
     //#pragma omp for schedule (dynamic)
 #pragma omp for schedule (dynamic) nowait
     //#pragma omp for schedule (static) nowait
     //#pragma omp for
-    for(int i = 0; i<itemno ; i++)
-    {
-        Node *n,*p;
-        Head* head = heads + i;
-        Node* node = head->next;
+    for (int i = 0; i < itemno; i++) {
+        Node *n, *p;
+        Head *head = heads + i;
+        Node *node = head->next;
 
         //print output
-        if (outfile) outfile->write(head->id,head->count,size);
+        if (subspace) subspace->addDimensionSet(head->id, head->count, size);
 
         //print output but not do recursively mine
-        if (head->nodes == 1)
-        {
+        if (head->nodes == 1) {
             //single path
-            if (node->parent && outfile)
-            {
-                int oldset = outfile->setcount;
+            if (node->parent && subspace) {
+                int oldset = subspace->getSetCount();
                 int j = 0;
-                for (n = node->parent ; n ; n = n->parent) tmpbuf[j++] = heads[n->id].id;
-                outfile->write(tmpbuf,j,0,head->count,size+1);
-                UpdateK(outfile->setcount - oldset,1);
+                for (n = node->parent; n; n = n->parent) tmpbuf[j++] = heads[n->id].id;
+                subspace->addDimensionSet(tmpbuf, j, 0, head->count, size + 1);
+                UpdateK(subspace->getSetCount() - oldset, 1);
             }
 
 
-        }
-        else
-        {
+        } else {
 
-            int totalcount,itemcount,j,*ts;
+            int totalcount, itemcount, j, *ts;
             int *t = tmpbuf;
-            int	*oldid = tmpbuf;
-            int	*newid = tmpbuf + i  ;
+            int *oldid = tmpbuf;
+            int *newid = tmpbuf + i;
             oldid = t;
             totalcount = itemcount = 0;
 
             //the ts include two halfs: one
-            if (i<avglenght)
-            {
-                ts = tmpbuf + i*2 ;
-                memset(ts,0,sizeof(int)*i);
-                for (n = node ; n; n = n->next)
-                    for (p = n->parent; p ; p = p->parent)
+            if (i < avglength) {
+                ts = tmpbuf + i * 2;
+                memset(ts, 0, sizeof(int) * i);
+                for (n = node; n; n = n->next)
+                    for (p = n->parent; p; p = p->parent)
                         ts[p->id] += n->count;
-            }
-            else ts = twoset + (avglenght+i-1)*(i-avglenght)/2;
+            } else ts = twoset + (avglength + i - 1) * (i - avglength) / 2;
 
-            for (j=0 ; j < i  ;j++)
-            {
-                if (ts[j] >= minsup)
-                {	totalcount += ts[j];
+            for (j = 0; j < i; j++) {
+                if (ts[j] >= minsup) {
+                    totalcount += ts[j];
                     oldid[itemcount] = j;
                     newid[j] = itemcount++;
-                }
-                else newid[j] = -1;
+                } else newid[j] = -1;
             }
 
-            UpdateK(itemcount,head->nodes);
+            UpdateK(itemcount, head->nodes);
 
-            if (itemcount >1)
-            {
-                if (head->nodes <= thres_k)
-                {
+            if (itemcount > 1) {
+                if (head->nodes <= thres_k) {
                     //same bit size array but save memory
                     //double runtime =  clock()/(float)CLOCKS_PER_SEC;
-                    int tcount = head->nodes/TID_SIZE + ((head->nodes%TID_SIZE)?1:0);
-                    int MC=0;			//markcount for memory
-                    unsigned int MR=0;	//markrest for memory
-                    char* MB;			//markbuf for memory
-                    MB=fp_buf->bufmark(&MR, &MC);
-                    int *trans = (int*)fp_buf->newbuf(head->nodes,sizeof(int));
-                    Item *items = (Item*)fp_buf->newbuf(itemcount,sizeof(Item));
-                    TID_DATA *tid = (TID_DATA*)fp_buf->newbuf(tcount*itemcount,sizeof(TID_DATA));
-                    int *sameitems = (int*)fp_buf->newbuf(i,sizeof(int));
+                    int tcount = head->nodes / TID_SIZE + ((head->nodes % TID_SIZE) ? 1 : 0);
+                    int MC = 0;            //markcount for memory
+                    unsigned int MR = 0;    //markrest for memory
+                    char *MB;            //markbuf for memory
+                    MB = fp_buf->bufmark(&MR, &MC);
+                    int *trans = (int *) fp_buf->newbuf(head->nodes, sizeof(int));
+                    Item *items = (Item *) fp_buf->newbuf(itemcount, sizeof(Item));
+                    TID_DATA *tid = (TID_DATA *) fp_buf->newbuf(tcount * itemcount, sizeof(TID_DATA));
+                    int *sameitems = (int *) fp_buf->newbuf(i, sizeof(int));
                     Item *it;
-                    int h,m;
+                    int h, m;
 
-                    memset(tid,0,sizeof(TID_DATA)*tcount*itemcount);
+                    memset(tid, 0, sizeof(TID_DATA) * tcount * itemcount);
 
-                    for (j=0 ; j < itemcount  ;j++)
-                    {
-                        items[j].tid = tid + j*tcount;
+                    for (j = 0; j < itemcount; j++) {
+                        items[j].tid = tid + j * tcount;
                         items[j].id = heads[oldid[j]].id;
                         items[j].count = ts[oldid[j]];
                     }
 
-                    for (j=0, n = node ; n  ; j++, n = n->next)
-                    {
+                    for (j = 0, n = node; n; j++, n = n->next) {
                         trans[j] = n->count;
                         h = j / TID_SIZE;
-                        m = j% TID_SIZE;
+                        m = j % TID_SIZE;
 
-                        for (p = n->parent; p ; p = p->parent)
-                        {
-                            if (ts[p->id] >= minsup)
-                            {
+                        for (p = n->parent; p; p = p->parent) {
+                            if (ts[p->id] >= minsup) {
                                 it = items + newid[p->id];
 
                                 it->tid[h] |= (0x00000001 << m);
                             }
                         }
                     }
-                    TID_Bit_Vector_Mining(items,itemcount,trans,tcount,minsup,outfile,size + 1,sameitems,0);
+                    TID_Bit_Vector_Mining(items, itemcount, trans, tcount, minsup, subspace, size + 1, sameitems, 0);
                     //TIDListRuntime += ( clock()/(float)CLOCKS_PER_SEC - runtime);
                     fp_buf->freebuf(MR, MC, MB);
-                }
-                else
-                {
+                } else {
                     //UpdateK(itemcount,head->nodes);
-                    int MC=0;			//markcount for memory
-                    unsigned int MR=0;	//markrest for memory
-                    char* MB;			//markbuf for memory
-                    MB=fp_buf->bufmark(&MR, &MC);
-                    FPM_modified* ctree = (FPM_modified*)fp_buf->newbuf(1,sizeof(FPM_modified));
-                    ctree->Create(itemcount,totalcount/head->count,fp_buf,tmpbuf,oneCount,onePos,Patterns);
-                    for (j=0 ; j < itemcount  ;j++) ctree->heads[j].init(heads[oldid[j]].id,ts[oldid[j]],0,0);
+                    int MC = 0;            //markcount for memory
+                    unsigned int MR = 0;    //markrest for memory
+                    char *MB;            //markbuf for memory
+                    MB = fp_buf->bufmark(&MR, &MC);
+                    FPM_modified *ctree = (FPM_modified *) fp_buf->newbuf(1, sizeof(FPM_modified));
+                    ctree->Create(itemcount, totalcount / head->count, fp_buf, tmpbuf, oneCount, onePos, Patterns);
+                    for (j = 0; j < itemcount; j++) ctree->heads[j].init(heads[oldid[j]].id, ts[oldid[j]], 0, 0);
 
                     //for each node this head list i
-                    for (n = node ; n; n = n->next)
-                    {
+                    for (n = node; n; n = n->next) {
                         //traverse from bottom to top to create a transaction with count n->count
-                        for (j = i,p = n->parent; p ; p = p->parent)
-                        {
-                            if (newid[p->id] != -1) t[--j] = newid[p->id] ;
+                        for (j = i, p = n->parent; p; p = p->parent) {
+                            if (newid[p->id] != -1) t[--j] = newid[p->id];
                         }
                         //create the ctree from the current tree
                         if (j != i) ctree->Grow(t + j, i - j, n->count);
@@ -401,17 +430,64 @@ void FPM_modified::DFP_Tree_Mining_Parallel(int minsup, OutputData *outfile, int
 
 
                     //then mine it
-                    ctree->DFP_Tree_Mining(minsup,outfile,size + 1,threadid,threadnum);
+                    ctree->DFP_Tree_Mining(minsup, subspace, size + 1, threadid, threadnum);
 
                     fp_buf->freebuf(MR, MC, MB);
                 }
-            }
-            else if (itemcount == 1 && outfile)
-            {
-                UpdateK(1,head->nodes);
-                outfile->write(heads[oldid[0]].id,ts[oldid[0]],size+1);
+            } else if (itemcount == 1 && subspace) {
+                UpdateK(1, head->nodes);
+                subspace->addDimensionSet(heads[oldid[0]].id, ts[oldid[0]], size + 1);
             }
         }
+    }
+}
+
+void
+FPM_modified::TID_Bit_Vector_Mining(Item *items, int itemcount, int *trans, int tidsize, int minsup,
+                                    SharedSubspace *subspace,
+                                    int size, int *sameitems, int sameitemscount) {
+    int count, pos, newsameitemscount, MC;
+    unsigned int MR;
+    char *MB;
+    Item *itemset;
+    TID_DATA *tid;
+
+    if (itemcount > 3) quicksort_item(items, 0, itemcount - 1);
+
+    if (subspace) {
+        subspace->addDimensionSet(items[0].id, items[0].count, size);
+        if (sameitemscount) subspace->addDimensionSet(sameitems, sameitemscount, 0, items[0].count, size + 1);
+    }
+
+    for (int i = 1; i < itemcount; i++) {
+        count = pos = newsameitemscount = MC = MR = 0;
+        MB = fp_buf->bufmark(&MR, &MC);
+        itemset = (Item *) fp_buf->newbuf(i, sizeof(Item));
+        tid = (TID_DATA *) fp_buf->newbuf(tidsize * i, sizeof(TID_DATA));
+
+        for (int j = 0; j < i; j++) {
+            itemset[count].tid = tid + j * tidsize;
+            itemset[count].count = 0;
+
+            if (Intersect(items[i], items[j], itemset[count], trans, tidsize) >= minsup) {
+                if (items[i].count == itemset[count].count) {
+                    sameitems[sameitemscount + newsameitemscount] = items[j].id;
+                    newsameitemscount++;
+                } else {
+                    itemset[count].id = items[j].id;
+                    count++;
+                }
+            }
+        }
+        if (subspace) {
+            subspace->addDimensionSet(items[i].id, items[i].count, size);
+            if (sameitemscount || newsameitemscount)
+                subspace->addDimensionSet(sameitems, sameitemscount + newsameitemscount, 0, items[i].count, size + 1);
+        }
+        if (count)
+            TID_Bit_Vector_Mining(itemset, count, trans, tidsize, minsup, subspace, size + 1, sameitems,
+                                  sameitemscount + newsameitemscount);
+        fp_buf->freebuf(MR, MC, MB);
     }
 }
 
@@ -422,7 +498,6 @@ FPM_modified::Mine_Patterns_Parallel(ProcessTransactions &pt, int minsup, int th
     thres_k = thres_K;
     int threadnum = omp_get_num_threads();
     int threadid = omp_get_thread_num();
-    int trans;
     double timecount, timebuild, timemine, timeio, timetotal;
 
     timetotal = timecount = omp_get_wtime();
@@ -508,7 +583,7 @@ FPM_modified::Mine_Patterns_Parallel(ProcessTransactions &pt, int minsup, int th
     }
 
     if (twoset) {
-        int twosetsize = ((itemno + avglenght - 1) * (itemno - avglenght)) / 2;
+        int twosetsize = ((itemno + avglength - 1) * (itemno - avglength)) / 2;
         int k = threadid * (twosetsize / threadnum);
         int h = ((threadid + 1) == threadnum) ? twosetsize : (threadid + 1) * (twosetsize / threadnum);
 
@@ -522,24 +597,24 @@ FPM_modified::Mine_Patterns_Parallel(ProcessTransactions &pt, int minsup, int th
     timemine = omp_get_wtime();
 
 
-    OutputData *outdata = 0;
+    SharedSubspace *subspace = nullptr;
     if (threadid == 0) {
-        outdata = new OutputData(outfile, minsup, itemno);
-        info->out = outdata;
+        subspace = new SharedSubspace(minsup, itemno);
+        info->subspace = subspace;  // shared subspace
     }
 
 #pragma omp barrier
-    if (threadid != 0) outdata = new OutputData(info->out->file, minsup, itemno);
+    if (threadid != 0) subspace = new SharedSubspace(minsup, itemno);  // process-private subspaces
 
     twoset = info->pfpm[0]->twoset;
     heads = info->pfpm[0]->heads;
 
     UpdateK(itemno, K_LEVEL * K_STEP);
-    DFP_Tree_Mining_Parallel(minsup, outdata, 1, threadid, threadnum);
+    DFP_Tree_Mining_Parallel(minsup, subspace, 1, threadid, threadnum);
 
 
 #pragma omp atomic
-    info->totalitemsets += outdata->setcount;
+    info->totalitemsets += subspace->getSetCount();
 
     //timing
     timeio = 0;
@@ -553,6 +628,7 @@ FPM_modified::Mine_Patterns_Parallel(ProcessTransactions &pt, int minsup, int th
 
 
     /* TODO: make printing optional (debugging?)
+     */
      if (threadid == 0) {
          //be careful with this
          //if (outdata->file) fflush(outdata->file);
@@ -567,11 +643,10 @@ FPM_modified::Mine_Patterns_Parallel(ProcessTransactions &pt, int minsup, int th
               << timetotal << "\n";
 
      }
-     */
+
 
     //delete outdata;
     //Destroy();
-
 }
 //-----------------------------------------------------------------------------------------
 //

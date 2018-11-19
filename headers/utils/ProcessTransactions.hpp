@@ -9,12 +9,26 @@
 #include "../ShaFEM/DataObject.h"
 #include "SharedDataset.hpp"
 
-typedef uint16_t Dimension;
-typedef std::vector<Dimension> DimensionSet;
+typedef int Dimension;
+class Dimensions {
+private:
+    std::vector<Dimension> _items;
+    int _count;
+public:
+    Dimensions(){_count=0;}
+    void add(Dimension d){_items.emplace_back(d); }
+    void setMaxSize(int n){_items.resize(n);}
+    Dimension &operator[](int index) { return _items[index]; }
+
+    const std::vector<Dimension> getItems(){return _items;}
+    int getSize(){return _items.size();}
+    int getCount(){return _count;}
+};
 
 class ProcessTransactions {
 private:
-    std::vector<DimensionSet> transactions;
+    std::vector<Dimensions> transactions;
+    uint64_t currTransaction;
     Countlist counts;
     uint32_t numTransactions;
 
@@ -24,20 +38,24 @@ public:
                 //index = x : item with index (x-1) is frequent
                 //index = -x: item with index (x-1) is frequent and the transaction must contain this item
     char *mask;
-    Transaction tran;
+    Transaction *t;
 
-    ProcessTransactions() { numTransactions = 0; }
+    ProcessTransactions() { numTransactions = 0;}
 
     explicit ProcessTransactions(uint64_t size) {
         transactions.resize(size);
         numTransactions = 0;
     }
 
+    ~ProcessTransactions(){delete t;}
+
     void buildTransactionsPar(RowIndex centroidID, SharedDataset &X, PartitionID me);
 
     void SetDataMask(int totalitems, Headlist *Heads, int PartID = 0, int PartNum = 1);
 
-    Transaction* GetTransaction();
+    Transaction* getTransaction();
+
+    bool moreTransactions(){return currTransaction < transactions.size();}
 
     Countlist getCounts() { return counts; }
 

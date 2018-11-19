@@ -35,6 +35,9 @@ if (OPENMP_FOUND)
     set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 endif(OPENMP_FOUND)
 
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O")
+
 add_executable(ShaMC main.cpp
         src/utils/SharedDataset.cpp
         headers/utils/SharedDataset.hpp
@@ -49,11 +52,8 @@ add_executable(ShaMC main.cpp
         headers/ShaFEM/DataObject.h
         src/utils/ProcessTransactions.cpp
         headers/utils/ProcessTransactions.hpp
-        src/ShaFEM/FPM.cpp
-        headers/ShaFEM/FPM.h
         src/ShaFEM/FPM_modified.cpp
         headers/ShaFEM/FPM_modified.hpp
-        src/ShaFEM/InputData.cpp
-        headers/ShaFEM/InputData.h
         src/ShaFEM/buffer.cpp
-        headers/ShaFEM/buffer.h)
+        headers/ShaFEM/buffer.h src/utils/SharedSubspace.cpp
+        headers/utils/SharedSubspace.hpp)

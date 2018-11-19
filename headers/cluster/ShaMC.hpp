@@ -7,11 +7,14 @@
 
 #include <omp.h>
 #include <vector>
+#include <random>
 #include <unordered_map>
 #include "../utils/SharedDataset.hpp"
 #include "../utils/SharedSettings.hpp"
+#include "../../headers/utils/logger.h"
+#include "../../headers/ShaFEM/FPM_modified.hpp"
+#include "../../headers/utils/ProcessTransactions.hpp"
 
-//#include "../ShaFEM/FPM.h"
 
 class ShaMC {
 private:
