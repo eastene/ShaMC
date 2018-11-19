@@ -9,6 +9,7 @@
 #define MAX_ARRAY_SIZE 16*124*1024
 #define K_STEP 32
 #define K_LEVEL 9
+#define TID_SIZE 32
 #define LOOKUP_TABLE_SIZE 256
 #define MAX_NUM_THREAD 128
 
@@ -24,7 +25,7 @@ struct Info {
     int totalitemsets;
     int maxitems;
     int currentthread;
-    FPM_modified	*pfpm[MAX_NUM_THREAD];	//addjust the array if want more current thread
+    FPM_modified *pfpm[MAX_NUM_THREAD];    //addjust the array if want more current thread
     //OutputData*	out;
 
     Info() {
@@ -66,11 +67,17 @@ public:
     bool Create(int ItemCount, int AverageLenght, memory *MemoryBuffer, int *TempBuffer, int *OneCountArray,
                 int *OnePosArray, unsigned int *PatternsArray);
 
-    void Grow(int* t, int size,int count,bool order=true);
+    void Grow(int *t, int size, int count, bool order = true);
+
     int Build_FP_Tree(ProcessTransactions &data);
 
-    void Mine_Patterns_Parallel(ProcessTransactions &pt, int minsup, int thres_K, int methods,
-                                Info *info);
+    void UpdateK(int NewPatternNum, int DBSize);
+
+    void DFP_Tree_Mining(int minsup, OutputData *outfile, int size = 1, int threadid = 0, int threadnum = 1);
+
+    void DFP_Tree_Mining_Parallel(int minsup, OutputData *outfile, int size, int threadid, int threadnum = 1);
+
+    void Mine_Patterns_Parallel(ProcessTransactions &pt, int minsup, int thres_K, Info *info);
 };
 
 
