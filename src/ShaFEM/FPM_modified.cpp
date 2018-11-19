@@ -127,19 +127,13 @@ void FPM_modified::Grow(int *t, int size, int count, bool order) {
 }
 
 int FPM_modified::Build_FP_Tree(ProcessTransactions &data) {
-    Transaction* t;
+    Transaction *t;
     int trans = 0;
 
-    try{
-        while (data.moreTransactions())
-        {
-            t = data.getTransaction();
-            Grow(t->items, t->size, t->count); // convert vector to array
-            trans += t->count;
-        }
-    } catch (OutOfRangeException &e) {
-        // do nothing, end of transactions reached
-
+    while (data.moreTransactions()) {
+        t = data.getTransaction();
+        Grow(t->items, t->size, t->count); // convert vector to array
+        trans += t->count;
     }
 
     return trans;
@@ -629,20 +623,20 @@ FPM_modified::Mine_Patterns_Parallel(ProcessTransactions &pt, int minsup, int th
 
     /* TODO: make printing optional (debugging?)
      */
-     if (threadid == 0) {
-         //be careful with this
-         //if (outdata->file) fflush(outdata->file);
-         //if (outdata->file) fclose(outdata->file);
-         std::cout << setiosflags(std::ios::fixed) << std::setprecision(2) << "Minsup: "
-              << minsup << "\n"
-              << "Number of threads: "
-              << threadnum << "\n"
-              << "Total frequent patterns: "
-              << info->totalitemsets << "\n"
-              << "Time: "
-              << timetotal << "\n";
+    if (threadid == 0) {
+        //be careful with this
+        //if (outdata->file) fflush(outdata->file);
+        //if (outdata->file) fclose(outdata->file);
+        std::cout << setiosflags(std::ios::fixed) << std::setprecision(2) << "Minsup: "
+                  << minsup << "\n"
+                  << "Number of threads: "
+                  << threadnum << "\n"
+                  << "Total frequent patterns: "
+                  << info->totalitemsets << "\n"
+                  << "Time: "
+                  << timetotal << "\n";
 
-     }
+    }
 
 
     //delete outdata;
