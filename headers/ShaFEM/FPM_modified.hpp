@@ -118,7 +118,7 @@ public:
     TID_Bit_Vector_Mining(Item *items, int itemcount, int *trans, int tidsize, int minsup, SharedSubspace *subspace,
                           int size, int *sameitems, int sameitemscount);
 
-    void Mine_Patterns_Parallel(ProcessTransactions &pt, int minsup, int thres_K, Info *info);
+    SharedSubspace* Mine_Patterns_Parallel(ProcessTransactions &pt, int minsup, int thres_K, Info *info,  SharedSettings &params);
 };
 
 

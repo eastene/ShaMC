@@ -8,34 +8,38 @@
 
 #include <cstdint>
 #include <vector>
+#include <set>
 #include "ProcessTransactions.hpp"
 
 typedef int Count;
 
 struct DimensionSet {
-    Dimension item;
-    Count count;
+    std::string itemset;
+    std::string count;
     Count size;
 };
 
 class SharedSubspace {
 private:
-    Count _setcount;  // total number of itemsets
     Count _itemNumber;
     Count _minSupport;
+    SharedSettings _parameters;
+    IntToString* _lookup;
 
-    std::vector<DimensionSet*> _items;
+    std::vector<DimensionSet *> _items;
 public:
 
-    SharedSubspace(Count minSupport, Count itemNumber) : _minSupport{minSupport},
-                                                         _itemNumber{itemNumber},
-                                                         _setcount{0} {};
+    SharedSubspace(Count minSupport, Count itemNumber, SharedSettings &parameters) : _minSupport{minSupport},
+                                                                                    _itemNumber{itemNumber},
+                                                                                    _parameters{parameters} {_lookup = new IntToString(_parameters.minsupport);}
 
     void addDimensionSet(int item, int count, int size);
 
     void addDimensionSet(int *items, int length, int level, int count, int size);
 
-    const Count getSetCount() { return _setcount; }
+    const Count getSetCount() { return _items.size(); }
+
+    const std::vector<DimensionSet *> getSubspaces() { return _items; }
 };
 
 

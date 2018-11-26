@@ -25,6 +25,7 @@ struct SharedSettings{
     bool header = true;               // 1st row is header
     bool index = true;                // 1st column is index
     uint64_t bufferBytes = 10485760;  // 10MiB
+    int minsupport = 1;
 
 };
 

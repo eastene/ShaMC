@@ -7,13 +7,13 @@
 int main() {
     std::string path = "/home/evan/CLionProjects/ShaMC/data/soma_PC3.csv";
 
-    int num_threads = 2;
+    int num_threads = 1;
     omp_set_num_threads(num_threads);
 
     SharedSettings ss;
-    ss.maxiter = 2;
+    ss.maxiter = 1;
     ss.nThreads = num_threads;
-    ss.width = 2;
+    ss.width = 4;
 
     SharedDataset X(path, ss);
     X.printMetaInfo();

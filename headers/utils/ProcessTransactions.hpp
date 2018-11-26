@@ -33,18 +33,18 @@ private:
     uint32_t numTransactions;
 
 public:
-    int *index;	//list of mapping index of original item
+    int *index;	//list of mapping index of original itemset
                 //index = 0 : infrequent items
-                //index = x : item with index (x-1) is frequent
-                //index = -x: item with index (x-1) is frequent and the transaction must contain this item
+                //index = x : itemset with index (x-1) is frequent
+                //index = -x: itemset with index (x-1) is frequent and the transaction must contain this itemset
     char *mask;
     Transaction *t;
 
-    ProcessTransactions() { numTransactions = 0;}
+    ProcessTransactions() { numTransactions = 0; currTransaction = 0;}
 
     explicit ProcessTransactions(uint64_t size) {
         transactions.resize(size);
-        numTransactions = 0;
+        numTransactions = 0; currTransaction = 0;
     }
 
     ~ProcessTransactions(){delete t;}

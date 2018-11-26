@@ -16,7 +16,7 @@ void ProcessTransactions::buildTransactionsPar(RowIndex centroidID, SharedDatase
             continue;
 
         point = X.getRowFromPartition(i, me);
-        for (Dimension j = 0; j < point->cells.size(); j++) {
+        for (Dimension j = 1; j <= point->cells.size(); j++) {
             if (fabs(point->cells[j] - centroid->cells[j]) <= X.getSettings().width) {
                 this->transactions[i].add(j);
                 this->counts.count(j);

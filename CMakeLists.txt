@@ -36,7 +36,7 @@ if (OPENMP_FOUND)
 endif(OPENMP_FOUND)
 
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O")
+#set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O")
 
 add_executable(ShaMC main.cpp
         src/utils/SharedDataset.cpp

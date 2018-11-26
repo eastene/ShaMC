@@ -117,10 +117,10 @@ void FPM_modified::Grow(int *t, int size, int count, bool order) {
     for (; i < size; i++, t++) {
         //add to first
         head = heads + *t;
-        me->init(*t, count, ((par == root) ? 0 : par), 0, par->child, head->next);
+        me->init(*t, count, ((par == root) ? nullptr : par), nullptr, par->child, head->next);
         par->child = head->next = me;
         head->nodes++;
-        if (head->last == 0) head->last = me;
+        if (head->last == nullptr) head->last = me;
         par = me;
         me++;
     }
@@ -185,7 +185,7 @@ int FPM_modified::Intersect(const Item x, const Item y, Item &xy, int *trans, in
 }
 
 void FPM_modified::DFP_Tree_Mining(int minsup, SharedSubspace *subspace, int size, int threadid, int threadnum) {
-    // for each head list, create a project tree and find the frequent item
+    // for each head list, create a project tree and find the frequent itemset
     for (int i = 0; i < itemno; i++) {
         // this items is not be mined , used in case of parallel
         // if ( (size ==1) && (i%threadnum) != threadid ) continue;
@@ -284,7 +284,7 @@ void FPM_modified::DFP_Tree_Mining(int minsup, SharedSubspace *subspace, int siz
                 MB = fp_buf->bufmark(&MR, &MC);
                 FPM_modified *ctree = (FPM_modified *) fp_buf->newbuf(1, sizeof(FPM_modified));
                 ctree->Create(itemcount, totalcount / head->count, fp_buf, tmpbuf, oneCount, onePos, Patterns);
-                for (j = 0; j < itemcount; j++) ctree->heads[j].init(heads[oldid[j]].id, ts[oldid[j]], 0, 0);
+                for (j = 0; j < itemcount; j++) ctree->heads[j].init(heads[oldid[j]].id, ts[oldid[j]], 0, nullptr);
 
                 //for each node this head list i
                 for (n = node; n; n = n->next) {
@@ -309,7 +309,7 @@ void FPM_modified::DFP_Tree_Mining(int minsup, SharedSubspace *subspace, int siz
 
 void
 FPM_modified::DFP_Tree_Mining_Parallel(int minsup, SharedSubspace *subspace, int size, int threadid, int threadnum) {
-    //for each head list, create a project tree and find the frequent item
+    //for each head list, create a project tree and find the frequent itemset
     //#pragma omp for schedule (dynamic)
 #pragma omp for schedule (dynamic) nowait
     //#pragma omp for schedule (static) nowait
@@ -328,7 +328,7 @@ FPM_modified::DFP_Tree_Mining_Parallel(int minsup, SharedSubspace *subspace, int
             if (node->parent && subspace) {
                 int oldset = subspace->getSetCount();
                 int j = 0;
-                for (n = node->parent; n; n = n->parent) tmpbuf[j++] = heads[n->id].id;
+                //for (n = node->parent; n; n = n->parent) tmpbuf[j++] = heads[n->id].id;
                 subspace->addDimensionSet(tmpbuf, j, 0, head->count, size + 1);
                 UpdateK(subspace->getSetCount() - oldset, 1);
             }
@@ -347,9 +347,12 @@ FPM_modified::DFP_Tree_Mining_Parallel(int minsup, SharedSubspace *subspace, int
             if (i < avglength) {
                 ts = tmpbuf + i * 2;
                 memset(ts, 0, sizeof(int) * i);
-                for (n = node; n; n = n->next)
+                for (n = node; n; n = n->next) {
                     for (p = n->parent; p; p = p->parent)
                         ts[p->id] += n->count;
+                    //if (n->next == node) break;
+                }
+
             } else ts = twoset + (avglength + i - 1) * (i - avglength) / 2;
 
             for (j = 0; j < i; j++) {
@@ -410,7 +413,7 @@ FPM_modified::DFP_Tree_Mining_Parallel(int minsup, SharedSubspace *subspace, int
                     MB = fp_buf->bufmark(&MR, &MC);
                     FPM_modified *ctree = (FPM_modified *) fp_buf->newbuf(1, sizeof(FPM_modified));
                     ctree->Create(itemcount, totalcount / head->count, fp_buf, tmpbuf, oneCount, onePos, Patterns);
-                    for (j = 0; j < itemcount; j++) ctree->heads[j].init(heads[oldid[j]].id, ts[oldid[j]], 0, 0);
+                    for (j = 0; j < itemcount; j++) ctree->heads[j].init(heads[oldid[j]].id, ts[oldid[j]], 0, nullptr);
 
                     //for each node this head list i
                     for (n = node; n; n = n->next) {
@@ -420,6 +423,9 @@ FPM_modified::DFP_Tree_Mining_Parallel(int minsup, SharedSubspace *subspace, int
                         }
                         //create the ctree from the current tree
                         if (j != i) ctree->Grow(t + j, i - j, n->count);
+
+                        // termination
+                        //if (n->next == node) break;
                     }
 
 
@@ -486,8 +492,8 @@ FPM_modified::TID_Bit_Vector_Mining(Item *items, int itemcount, int *trans, int 
 }
 
 // Modified by Evan Stene from the original source to fit the use case of clustering algorithm
-void
-FPM_modified::Mine_Patterns_Parallel(ProcessTransactions &pt, int minsup, int thres_K, Info *info) {
+SharedSubspace *
+FPM_modified::Mine_Patterns_Parallel(ProcessTransactions &pt, int minsup, int thres_K, Info *info, SharedSettings &params) {
     //Threshold K
     thres_k = thres_K;
     int threadnum = omp_get_num_threads();
@@ -533,7 +539,7 @@ FPM_modified::Mine_Patterns_Parallel(ProcessTransactions &pt, int minsup, int th
     int totalcount = 0;
     //Create header table
     for (int i = 0; i < info->maxitems; i++) {
-        if (info->globalcount[i] >= minsup) headlist.add(Head(i, info->globalcount[i], 0, 0));
+        if (info->globalcount[i] >= minsup) headlist.add(Head(i, info->globalcount[i], 0, nullptr));
         totalcount += info->globalcount[i];
     }
     itemno = headlist.size;
@@ -546,15 +552,15 @@ FPM_modified::Mine_Patterns_Parallel(ProcessTransactions &pt, int minsup, int th
 //	root = info->pfpm[0]->root;
 //	twoset = info->pfpm[0]->twoset;
 
-    //No item > minsup , exit the program
+    //No itemset > minsup , exit the program
     if (itemno <= 0) {
         if (threadid == 0) std::cout << "No frequent pattern found\n";
-        return;
+        return nullptr;
     }
 
     //Sort Descendingly the Head Node List
     pt.SetDataMask(info->maxitems, &headlist, 0, 1);
-    for (int i = 0; i < itemno; i++) heads[i].init(headlist[i].id, headlist[i].count, 0, 0);
+    for (int i = 0; i < itemno; i++) heads[i].init(headlist[i].id, headlist[i].count, 0, nullptr);
     headlist.destroy();
 
     //Scan database twice to contruct the header table and FP-tree
@@ -593,12 +599,12 @@ FPM_modified::Mine_Patterns_Parallel(ProcessTransactions &pt, int minsup, int th
 
     SharedSubspace *subspace = nullptr;
     if (threadid == 0) {
-        subspace = new SharedSubspace(minsup, itemno);
+        subspace = new SharedSubspace(minsup, itemno, params);
         info->subspace = subspace;  // shared subspace
     }
 
 #pragma omp barrier
-    if (threadid != 0) subspace = new SharedSubspace(minsup, itemno);  // process-private subspaces
+    if (threadid != 0) subspace = new SharedSubspace(minsup, itemno, params);  // process-private subspaces
 
     twoset = info->pfpm[0]->twoset;
     heads = info->pfpm[0]->heads;
@@ -622,7 +628,6 @@ FPM_modified::Mine_Patterns_Parallel(ProcessTransactions &pt, int minsup, int th
 
 
     /* TODO: make printing optional (debugging?)
-     */
     if (threadid == 0) {
         //be careful with this
         //if (outdata->file) fflush(outdata->file);
@@ -637,10 +642,13 @@ FPM_modified::Mine_Patterns_Parallel(ProcessTransactions &pt, int minsup, int th
                   << timetotal << "\n";
 
     }
+     */
 
 
     //delete outdata;
     //Destroy();
+
+    return subspace;
 }
 //-----------------------------------------------------------------------------------------
 //
