@@ -5,11 +5,21 @@
 #include "headers/cluster/ShaMC.hpp"
 
 int main() {
-    std::string path = "/home/evan/CLionProjects/ShaMC/data/soma_PC3edDataset X(path, ss);
+
+    int num_threads = 2;
+    omp_set_num_threads(num_threads);
+
+    std::string path = "/home/evan/CLionProjects/ShaMC/data/soma_test.csv";
+    SharedSettings ss;
+    ss.nThreads = num_threads;
+    ss.width = 20;
+    ss.maxiter = 2;
+
+    SharedDataset X(path, ss);
     X.printMetaInfo();
 
     ShaMC mc(ss);
-    mc.fit(X);
+    mc.fit(X, num_threads);
 
     return 0;
 }

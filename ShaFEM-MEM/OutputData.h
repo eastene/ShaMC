@@ -35,6 +35,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 #include <sstream>
+#include <memory>
 
 class OutputData
 {
@@ -44,13 +45,13 @@ public:
 		int*	setpos;		//position list of items in itemset
 		char*	setbuf;		//buffer to store an itemset
 		char*	buffer;		//buffer used to store data
-		std::stringstream	*file;
+        std::stringstream* file;
 		IntToString *lookup;
 
-		OutputData(char *filename,int minsup,int itemcount);
-		OutputData(std::stringstream *pfile,int minsup,int itemcount);
+
+		OutputData(std::stringstream* out,int minsup,int itemcount);
 		 ~OutputData();
-		bool open(char *filename,int minsup);
+		bool open(std::stringstream* out, int minsup);
 		void close();
 		bool isopen() {return (file?true:false);};
 		void write(int item, int count,int size);

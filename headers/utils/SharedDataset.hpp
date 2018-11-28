@@ -15,7 +15,7 @@
 #include "ProcessDataBuffer.hpp"
 #include "SharedSettings.hpp"
 
-typedef uint8_t PartitionID;
+typedef int PartitionID;
 
 typedef std::vector<std::string> Header;
 

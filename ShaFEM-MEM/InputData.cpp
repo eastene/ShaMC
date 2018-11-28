@@ -37,11 +37,11 @@ THE POSSIBILITY OF SUCH DAMAGE.
 //----------------------------------------------------------------------------------
 //Open the Input File 
 //----------------------------------------------------------------------------------
-bool InputData::Open(char *FileName)
+bool InputData::Open(std::stringstream* in)
 {
 	pos = 0; 
 
-	file = new stringstream; //fopen(FileName,"rt");
+	file = in; //fopen(FileName,"rt");
 	filesize = GetFileSize();
 
 	if (file) buffer = new char[IO_BUFFER_SIZE];
@@ -56,9 +56,10 @@ void InputData::Close()
 {
 	if(file)
 	{ 
-		delete[] buffer; 
+		if(buffer) delete[] buffer;
+		//file->str("");
 		//fclose(file);
-		delete file;
+		//delete file;
 	}
 	if (mask) {delete[] mask; mask = 0;}
 	if (index) {delete[] index; index=0;}
@@ -115,7 +116,15 @@ Transaction* InputData::GetTransaction()
 			size = file->gcount();
 			buf = buffer;
 
-			unsigned long tmppos = file->tellg(); //current file pos
+			unsigned long tmppos;
+
+			if (file->tellg() != -1) {
+				tmppos = file->tellg();
+			} else {
+				tmppos = filesize + 1;
+			}
+
+			//current file pos
 			if ((tmppos-filepos) > filesize) size -= ((tmppos-filepos) - filesize);
 		}
 
@@ -182,91 +191,7 @@ Transaction* InputData::GetTransaction()
 	file->seekg(filepos, ios_base::beg);
 	return 0;
 }
-/*
 
-Transaction* InputData::GetTransaction()
-{
-	int  i,j,item,num,idx;
-	bool flag = false;
-	bool isOK = false;
-	char *buf = buffer + pos; 
-	item = tran.size = 0;
-
-	do
-	{
-		if (pos==0)
-		{		
-			//read data into buffer if the buffer is empty
-			size = fread(buffer,sizeof(char),IO_BUFFER_SIZE, file);
-			buf = buffer;
-
-			unsigned long tmppos = ftell(file); //current file pos
-			if ((tmppos-filepos) > filesize) size -= ((tmppos-filepos) - filesize);
-		}
-
-
-		for (i = pos; i< size ; i++,buf++)
-		{
-			if((*buf >= '0') && (*buf <= '9'))
-			{
-				item *=10;
-				item += int(*buf - '0');
-				flag = true;
-			}
-			else if (flag == true)
-			{
-				 //if index of this item  < 0 --> infrequent item
-				if (index[item]>=0 ) 
-				{
-					mask[index[item]] = 1;
-					if (tran.size < tran.maxsize)  tran.items[tran.size++] = index[item] ;//tran.add(index[item]);
-				}
-				item = 0;
-				flag = false;
-			}
-			// stop when reach a new line (i.e. the transaction ends)
-			// ignore the transaction without item
-			if (*buf=='\n' && tran.size)
-			{	
-				pos = (i==(size-1))?0:(i+1);
-				
-				if (tran.size*(log((float)tran.size)/log(2.0)+1) < tran.maxsize)
-				{
-					//only sort on the short transaction
-					num = 0;
-					for (j = 0 ; j < tran.size ; j++) 
-					{
-						if (mask[tran.items[j]]==1) mask[tran.items[j]] = 0;
-						else 	{tran.items[j] = tran.maxsize;	num++; }
-					}
-					tran.sort();
-					tran.size -= num ;
-
-				}
-				else 
-				{
-					//for long transaction, use the mask instead 
-					num = tran.size;
-					tran.size = 0;
-					for (j = 0 ; j <tran.maxsize && num   ; j++) 
-					{	
-						//if (mask[j]) { tran.add(j) ; num--;}
-						if (mask[j]) { tran.items[tran.size++] = j;  ; num--;}
-					}
-					memset(mask,0,sizeof(char)*tran.maxsize);
-				}
-				return &tran;
-			}
-		}
-		pos = 0;
-	}
-	while (size > 0);
-
-
-	fseek(file,filepos,SEEK_SET);
-	return 0;
-}
-*/
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------

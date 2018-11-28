@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <limits>
+#include <cfloat>
 
 typedef uint64_t RowIndex;
 
@@ -19,6 +21,7 @@ struct Row {
     RowIndex idx;
     std::vector<double> cells;
     int clusterMembership;
+    double closestDist = DBL_MAX;
 };
 /*
  * constructs of multiple Rows

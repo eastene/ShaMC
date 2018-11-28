@@ -32,6 +32,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <set>
 #include <sstream>
+#include <memory>
 
 using namespace std;
 
@@ -53,7 +54,7 @@ class InputData
 	set<Transaction>::iterator ptran;	
 	unsigned long filepos; //size of whole file or data part it responsible for
 	unsigned long filesize; //size of whole file or data part it responsible for
-	std::stringstream	*file;
+    std::stringstream* file;
 	bool	Flag;
 	
 public:
@@ -65,10 +66,10 @@ public:
 	char *mask;
 	Transaction	tran;
 
-	InputData(char *FileName): index(0),mask(0),filesize(0),filepos(0),size(0){Flag=true;Open(FileName);};
+	InputData(std::stringstream* in): index(0),mask(0),filesize(0),filepos(0),size(0){Flag=true;Open(in);};
 	//InputData(): index(0),mask(0),filesize(0),filepos(0),size(0){};
 	 ~InputData() {Close();};
-	bool Open(char *FileName);
+	bool Open(std::stringstream* in);
 	void Close();
 	bool IsOpen() {return (file?true:false);};
 	void SetDataMask(int totalitems,Headlist* Heads,int PartID=0, int PartNum=1);

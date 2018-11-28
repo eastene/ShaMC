@@ -36,7 +36,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #include <omp.h> 
 //----------------------------------------------------------------------------------------------
-OutputData::OutputData(char *filename,int minsup, int itemcount) 
+OutputData::OutputData(std::stringstream* out,int minsup, int itemcount)
 { 
 	 lookup = 0;
 	 setcount = pos = 0; 
@@ -45,20 +45,7 @@ OutputData::OutputData(char *filename,int minsup, int itemcount)
 	 buffer = 0;
 	 file = 0;
 	 setmaxsize(itemcount);
-	 open(filename,minsup); 
-};
-
-//----------------------------------------------------------------------------------------------
-OutputData::OutputData(std::stringstream *pfile,int minsup, int itemcount)
-{ 
-	 lookup = 0;
-	 setcount = pos = 0; 
-	 setpos = 0; 
-	 setbuf = 0;
-	 buffer = 0;
-	 file = 0;
-	 setmaxsize(itemcount);
-	 file = pfile;
+	 file = out;
 
 	 if (file) 
 	{
@@ -83,13 +70,13 @@ OutputData:: ~OutputData()
 }
 
 //----------------------------------------------------------------------------------------------
-bool OutputData::open(char *filename,int minsup)
+bool OutputData::open(std::stringstream* out,int minsup)
 {
-	if ( filename[0] == 0 || strlen(filename) <=0 ) return false;
+	if ( out->fail() ) return false;
 
 	pos = 0; 
 
-	file = new std::stringstream;
+	file = out;
 //	setvbuf( file, NULL, _IONBF, 0 );
 
 	if (file) 
@@ -109,6 +96,7 @@ void OutputData::close()
 	{ 
 		if (pos) //output file and buffer is not empty
 		{
+#pragma omp critical
 			file->write(buffer, pos);
 		}
 
@@ -117,10 +105,10 @@ void OutputData::close()
 
 		//because it is shared --> should not close until all other thread complete 
 		//the close is control explicited in code
-		file->flush();
+		//file->flush();
 		//fclose(file);
 		
-		file = 0;
+		//file = 0;
 		buffer = 0;
 		lookup = 0;
 		pos = 0;
@@ -148,6 +136,8 @@ void OutputData::write(int item, int count, int size)
 	if (pos > (IO_BUFFER_SIZE - 20*(size+1))) 
 	{	
 		// don't need critical section because fwrite is thread-safe on Linux & Windows
+		// not true for string streams, critical section added
+#pragma omp critical
         file->write(buffer, pos);
 		pos = 0;
 	}
