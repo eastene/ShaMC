@@ -26,28 +26,15 @@ void SharedTransactions::buildTransactionsPar(RowIndex centroidID, SharedDataset
         point = X.getRowFromPartition(i, me);
         for (Dimension j = 0; j < point->cells.size(); j++) {
             if (fabs(point->cells[j] - centroid->cells[j]) <= X.getSettings().width) {
-                *_parStreams[me] << std::to_string(j) << " ";
+                *_transactions << std::to_string(j) << " ";
                 flag = true;
                 _numItems++;
             }
         }
         if (flag) {
-            *_parStreams[me] << "\n";
+            *_transactions << "\n";
+#pragma omp atomic
             _numTransactions++;
         }
-    }
-}
-
-void SharedTransactions::reduce() {
-    if (!_reduced) {
-        delete _transactions;
-        _transactions = new std::stringstream;
-        for (const auto &stream : _parStreams) {
-            if(!stream->eof()){
-                *(_transactions) << stream->str();
-                stream->str(std::string());
-            }
-        }
-        _reduced = true;
     }
 }

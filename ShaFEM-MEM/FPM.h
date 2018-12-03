@@ -160,5 +160,5 @@ class ParFPM {
 
 public:
     void Mine_Patterns(std::stringstream* in,std::stringstream* out, int minsup,
-                       int thres_K, int methods, Info *info, int trans); // added function
+                       int thres_K, int methods, Info *info); // added function
 };

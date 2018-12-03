@@ -924,6 +924,10 @@ void FPM::Mine_Patterns_Parallel(std::stringstream *in, std::stringstream *out, 
         if (info->globalcount[i] >= minsup) headlist.add(Head(i, info->globalcount[i], 0, 0));
         totalcount += info->globalcount[i];
     }
+
+    if(totalcount == 0)
+        return;
+
     itemno = headlist.size;
     headlist.sort();
 
@@ -949,7 +953,7 @@ void FPM::Mine_Patterns_Parallel(std::stringstream *in, std::stringstream *out, 
     //Scan database twice to contruct the header table and FP-tree
     indata.SetDataPartition(threadid, threadnum);
     Build_FP_Tree(&indata);
-    indata.Close();
+    //indata.Close();
 
     //merge local tree into global tree
 #pragma omp barrier
@@ -1024,8 +1028,7 @@ void FPM::Mine_Patterns_Parallel(std::stringstream *in, std::stringstream *out, 
     if (threadid == 0) {
         //be careful with this
         if (outdata->file) outdata->file->flush();
-        std::cout << outdata->file->rdbuf() << std::endl;
-        //if (outdata->file) fclose(outdata->file);
+        if (outdata->file) outdata->close();
         cout << setiosflags(ios::fixed) << setprecision(2) << "Minsup: "
              << minsup << "\n"
              << "Number of threads: "
@@ -1222,7 +1225,7 @@ FPM::Mine_Patterns_Parallel(std::stringstream *in, std::stringstream *out, int m
 //
 //-----------------------------------------------------------------------------------------
 void ParFPM::Mine_Patterns(std::stringstream *in, std::stringstream *out, int minsup,
-                           int thres_K, int methods, Info *info, int trans) {
+                           int thres_K, int methods, Info *info) {
 
 #pragma omp master
     BuildTidSizeLookupTable(OneCount, OnePos);

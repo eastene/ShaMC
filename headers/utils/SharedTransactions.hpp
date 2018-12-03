@@ -14,8 +14,7 @@ typedef int Dimension;
 class SharedTransactions {
 private:
 
-    std::stringstream*_transactions;
-    std::vector<std::shared_ptr<std::stringstream>> _parStreams;
+    std::stringstream* _transactions;
 
     uint32_t _numTransactions;
     uint64_t _numItems;
@@ -28,8 +27,6 @@ public:
 
     SharedTransactions() {
         _numThreads = 1;
-        _parStreams.resize(_numThreads);
-        _parStreams[0] = std::make_shared<std::stringstream>();
         _transactions = new std::stringstream("");
         _numTransactions = 0;
         _numItems = 0;
@@ -38,14 +35,13 @@ public:
 
     explicit SharedTransactions(uint16_t numThreads) {
         _numThreads = numThreads;
-        _parStreams.resize(numThreads);
-        for (int i = 0; i < numThreads; i++)
-            _parStreams[i] = std::make_shared<std::stringstream>();
         _transactions = new std::stringstream("");
         _numTransactions = 0;
         _numItems = 0;
         _reduced = false;
     }
+
+    ~SharedTransactions() {delete _transactions;}
 
     void buildTransactionsPar(RowIndex centroidID, SharedDataset &X, PartitionID me);
 
@@ -53,9 +49,7 @@ public:
 
     uint64_t getNumItems() { return _numItems; }
 
-    void reduce();
-
-    std::stringstream* getTransactions(){if (_reduced) ; else reduce(); return _transactions;}
+    std::stringstream* getTransactions(){return _transactions;}
 
    // Countlist& getCounts() { return _counts; }
 };

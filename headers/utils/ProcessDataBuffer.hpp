@@ -50,11 +50,15 @@ public:
 
     bool readRows();
 
+    void readRowsFromMem(MultiRow &rows);
+
     Row *getRow(RowIndex index);
 
     Row *getRowAsynch(RowIndex index);
 
     std::pair<uint64_t, uint64_t> getMemRange() {return inMemRange;}
+
+    MultiRow getBuffer(){return inMemBuffer;}
 
 };
 

@@ -67,6 +67,13 @@ bool ProcessDataBuffer::readRows() {
     return true;
 }
 
+void ProcessDataBuffer::readRowsFromMem(MultiRow &rows) {
+    inMemBuffer = rows;
+    inMemRange.first = 0; inMemRange.second = rows.size();
+    numRows = inMemRange.second;
+    moreData = false;
+}
+
 Row *ProcessDataBuffer::getRow(RowIndex index) {
     if (index >= this->inMemRange.first && index < this->inMemRange.second)
         return this->inMemBuffer[index];

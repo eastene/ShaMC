@@ -36,17 +36,22 @@ private:
     // shared implementation meta-info
     uint16_t num_threads;
     uint64_t rowsPerThread;
+    uint64_t extraRows;  // when num_threads does not evenly divide #rows (used only by last thread)
     std::vector<uint64_t> row2byte;
+    std::vector<std::pair<uint64_t, uint64_t>> partitions;
 
     // dataset
     Header header;
     bool hasIndex;
-    std::vector<ProcessDataBuffer> buffers;  // may hold entire dataset if small enough
+    MultiRow inMemBuffer;  // may hold entire dataset if small enough
+    std::pair<uint64_t, uint64_t> inMemRange; // range of rows in memory
     std::pair<RowIndex, int> _shape = std::make_pair(NULL, NULL);
 
 public:
 
     explicit SharedDataset(std::string &path, SharedSettings &parameters);
+
+    bool readRows();
 
     std::pair<RowIndex, int> shape() { return _shape; }
 
@@ -65,6 +70,8 @@ public:
     const SharedSettings getSettings() {return parameters;}
 
     void printMetaInfo();
+
+    void repartition(uint16_t nThreads);
 };
 
 
