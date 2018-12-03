@@ -34,7 +34,9 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include "OutputData.h"
 #include <cstring>
 #include <stdio.h>
-#include <omp.h> 
+#include <omp.h>
+#include <iostream>
+
 //----------------------------------------------------------------------------------------------
 OutputData::OutputData(std::stringstream* out,int minsup, int itemcount)
 { 
@@ -133,14 +135,16 @@ void OutputData::write(int item, int count, int size)
 	if (!file) return;
 
 	//write to file when buffer is full, 20 = string lenght of largest iterger number
-	if (pos > (IO_BUFFER_SIZE - 20*(size+1))) 
-	{	
+	//if (pos > (IO_BUFFER_SIZE - 20*(size+1)))
+	//{
 		// don't need critical section because fwrite is thread-safe on Linux & Windows
 		// not true for string streams, critical section added
 #pragma omp critical
-        file->write(buffer, pos);
-		pos = 0;
-	}
+		{
+			file->write(buffer, pos);
+			pos = 0;
+		}
+	//}
 	char *buf;
 	int  len;
 	
@@ -164,30 +168,7 @@ void OutputData::write(int item, int count, int size)
 	pos += len;
 
 }
-//----------------------------------------------------------------------------------------------
-//Append data of the current file into the end of des file
-//----------------------------------------------------------------------------------------------
-void OutputData::MergeData(char *SrcFileName,char *DesFileName,bool isAppend)
-{
-	FILE *desfile = fopen(DesFileName,(isAppend==true)?"a+":"w+"); 
-	FILE *srcfile = fopen(SrcFileName,"r"); 
-	
-	if (!desfile || !srcfile) return;
-	
-	char* buf = new char[IO_BUFFER_SIZE];
 
-	int size;
-
-	while (size = fread(buf,sizeof(char),IO_BUFFER_SIZE,srcfile))
-	{
-		fwrite(buf,sizeof(char),size, desfile);
-	}	
-
-	delete[] buf;
-
-	fclose(srcfile);
-	fclose(desfile);
-}
 //----------------------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------------------

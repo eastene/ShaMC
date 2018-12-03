@@ -94,6 +94,10 @@ bool SharedDataset::readRows() {
         this->inMemBuffer.push_back(row);
         this->inMemRange.second++;
 
+        if(line.empty()){
+            this->row2byte.pop_back();
+            this->inMemRange.second--;
+        }
     }
     datastream.close();
     this->row2byte.pop_back(); // last element will be end of last row

@@ -12,6 +12,7 @@
 #include "SharedTransactions.hpp"
 
 struct DimensionSet {
+    RowIndex mediodID;
     std::vector<int> itemset;
     int count;
     double mu;
@@ -22,16 +23,15 @@ class SharedSubspace {
 private:
     SharedSettings _parameters;
 
-    DimensionSet _centroid;
 public:
 
     explicit SharedSubspace(SharedSettings &parameters): _parameters{parameters} {};
 
-    void buildSubspace(std::stringstream &dimensionSet);
+    DimensionSet buildSubspace(std::stringstream &dimensionSet, RowIndex mediodID);
 
-    uint64_t clusterPar(RowIndex centroidID, SharedDataset &X, PartitionID me, int clusterNum);
+    uint64_t clusterPar(DimensionSet subspace, SharedDataset &X, PartitionID me, int clusterNum);
 
-    void printCentroid();
+    void printCentroid(DimensionSet centroid);
 };
 
 

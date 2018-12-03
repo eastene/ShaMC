@@ -114,18 +114,15 @@ Transaction *InputData::GetTransaction() {
             //read data into buffer if the buffer is empty
 
             unsigned long tmppos;
-#pragma omp critical
-            {
-                file->read(buffer, IO_BUFFER_SIZE);
-                size = file->gcount();
+            file->read(buffer, IO_BUFFER_SIZE);
+            size = file->gcount();
 
-                buf = buffer;
+            buf = buffer;
 
-                if (file->tellg() != -1) {
-                    tmppos = file->tellg();
-                } else {
-                    tmppos = filesize + 1;
-                }
+            if (file->tellg() != -1) {
+                tmppos = file->tellg();
+            } else {
+                tmppos = filesize + 1;
             }
 
             //current file pos
@@ -187,7 +184,6 @@ Transaction *InputData::GetTransaction() {
         pos = 0;
     } while (size > 0);
 
-#pragma omp critical
     file->seekg(filepos, ios_base::beg);
 
     return 0;
@@ -259,12 +255,9 @@ int InputData::CountItemFrequence(Countlist *ItemCounts) {
     tmpsize = filesize;
 
     do {
-#pragma omp critical
-        {
-            file->seekg(filepos, std::ios::beg);
-            file->read(buffer, IO_BUFFER_SIZE);
-            size = file->gcount();
-        }
+        file->seekg(filepos, std::ios::beg);
+        file->read(buffer, IO_BUFFER_SIZE);
+        size = file->gcount();
 
         buf = buffer;
 
@@ -301,18 +294,16 @@ int InputData::CountItemFrequence(Countlist *ItemCounts) {
 unsigned long InputData::GetFileSize() {
     unsigned long size = 0;
 
-#pragma omp critical
-    {
-        // set the file pointer to end of file
-        //file->seekg(0, ios_base::end);
+    // set the file pointer to end of file
+    file->seekg(0, ios_base::end);
 
-        // get the file size
-        size = file->str().size();
+    // get the file size
+    size = file->tellg();
 
-        // return the file pointer to begin of file if you want to read it
-        // rewind( file );
-        //file->seekg(0, ios_base::beg);
-    }
+    // return the file pointer to begin of file if you want to read it
+    // rewind( file );
+    file->seekg(0, ios_base::beg);
+
 
     return size;
 }
@@ -339,14 +330,11 @@ void InputData::SetDataPartition(int PartID, int PartNum) {
 
     //adjust pos to fit transactions
     if (PartID) {
-#pragma omp critical
-        {
-            file->seekg(filepos, ios_base::beg);
-            buf = buffer;
-            file->read(buffer, IO_BUFFER_SIZE);
-            n = file->gcount();
-            file->seekg(0, ios_base::beg);
-        }
+        file->seekg(filepos, ios_base::beg);
+        buf = buffer;
+        file->read(buffer, IO_BUFFER_SIZE);
+        n = file->gcount();
+
 
         for (int i = 0; i < n; i++, buf++)
             if (*buf == '\n') {
@@ -359,15 +347,10 @@ void InputData::SetDataPartition(int PartID, int PartNum) {
 
     //adjust size and pos to fit transactions
     if (PartID != PartNum - 1) {
-#pragma omp critical
-        {
-            file->seekg(filepos + filesize, ios_base::beg);
-            buf = buffer;
-            file->read(buffer, IO_BUFFER_SIZE);
-            n = file->gcount();
-            file->seekg(0, ios_base::beg);
-        }
-
+        file->seekg(filepos + filesize, ios_base::beg);
+        buf = buffer;
+        file->read(buffer, IO_BUFFER_SIZE);
+        n = file->gcount();
         for (int i = 0; i < n; i++, buf++)
             if (*buf == '\n') {
                 filesize += (i + 1);
