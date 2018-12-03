@@ -31,6 +31,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <cstring>
 #include <math.h>
+#include <iostream>
 #include "DataObject.h"
 #include "InputData.h"
 
@@ -112,10 +113,11 @@ Transaction *InputData::GetTransaction() {
     do {
         if (pos == 0) {
             //read data into buffer if the buffer is empty
-
+            file->seekg(filepos, file->beg);
             unsigned long tmppos;
+           // std::cout << file->str() << std::endl;
             file->read(buffer, IO_BUFFER_SIZE);
-            size = file->gcount();
+            size = file->tellg() == -1 ? filesize - filepos : static_cast<unsigned long>(file->tellg()); // - filepos;
 
             buf = buffer;
 
@@ -184,7 +186,7 @@ Transaction *InputData::GetTransaction() {
         pos = 0;
     } while (size > 0);
 
-    file->seekg(filepos, ios_base::beg);
+    file->seekg(filepos, file->beg);
 
     return 0;
 }
@@ -282,8 +284,7 @@ int InputData::CountItemFrequence(Countlist *ItemCounts) {
         }
     } while (size > 0);
 
-#pragma omp critical
-    file->seekg(0, ios_base::beg);
+    file->seekg(filepos, ios_base::beg);
 
     return trans;
 }
@@ -294,15 +295,8 @@ int InputData::CountItemFrequence(Countlist *ItemCounts) {
 unsigned long InputData::GetFileSize() {
     unsigned long size = 0;
 
-    // set the file pointer to end of file
-    file->seekg(0, ios_base::end);
-
     // get the file size
-    size = file->tellg();
-
-    // return the file pointer to begin of file if you want to read it
-    // rewind( file );
-    file->seekg(0, ios_base::beg);
+    size = file->str().size();
 
 
     return size;
