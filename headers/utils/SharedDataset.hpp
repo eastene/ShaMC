@@ -12,12 +12,31 @@
 #include <fstream>
 #include <sstream>
 #include <unordered_map>
-#include "ProcessDataBuffer.hpp"
+#include <cfloat>
 #include "SharedSettings.hpp"
 
 typedef int PartitionID;
 
 typedef std::vector<std::string> Header;
+
+typedef uint64_t RowIndex;
+
+/*
+ *  Row of data set, a single sample or transaction
+ */
+struct Row {
+    std::string id;
+    RowIndex idx;
+    std::vector<double> cells;
+    int clusterMembership = -1;
+    double closestDist = DBL_MAX;
+    std::string clusMediod = "";
+};
+/*
+ * constructs of multiple Rows
+ */
+typedef std::vector<Row *> MultiRow;
+typedef std::unordered_map<RowIndex, Row *> MultiRowMap;
 
 
 /*
@@ -49,9 +68,11 @@ private:
 
 public:
 
-    explicit SharedDataset(std::string &path, SharedSettings &parameters);
+    explicit SharedDataset(SharedSettings &parameters);
 
     bool readRows();
+
+    bool to_csv();
 
     std::pair<RowIndex, int> shape() { return _shape; }
 
@@ -70,6 +91,8 @@ public:
     const SharedSettings getSettings() {return parameters;}
 
     void printMetaInfo();
+
+    void printSummaryStats();
 
     void repartition(uint16_t nThreads);
 };

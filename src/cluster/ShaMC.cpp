@@ -5,15 +5,15 @@
 #include <cstring>
 #include "../../headers/cluster/ShaMC.hpp"
 
-void ShaMC::fit(SharedDataset &X, uint16_t nThreads) {
+void ShaMC::fit(SharedDataset &X) {
     bool isOk = true;
     RowIndex clusterCount = 0;
     RowIndex currentSize = X.shape().first;
     int minPoints = (int) ceil(parameters.alpha * X.shape().first);
     int failedAttempts = 0;
     PartitionID me;
-    double start, end;
     SharedSubspace subspace(parameters);
+    double start, end;
 
     // per-mediod datastructures
     std::vector<std::stringstream *> mediod_frequent_items;
@@ -21,9 +21,8 @@ void ShaMC::fit(SharedDataset &X, uint16_t nThreads) {
     std::vector<uint64_t> mediod_tot_points;
     std::vector<Info *> sharedInfos;
 
+    start = omp_get_wtime();
     for (int i = 0; i < parameters.maxiter; i++) {
-
-        start = omp_get_wtime();
 
         // termination conditions
         if (currentSize <= minPoints || failedAttempts >= parameters.maxAttempts) {
@@ -41,7 +40,6 @@ void ShaMC::fit(SharedDataset &X, uint16_t nThreads) {
         sharedInfos.resize(mediods.size());
         X.repartition(inner_threads);
 
-        int k = 0; // mediod number
 #pragma omp parallel private(me)
         {
             int m = omp_get_thread_num() / inner_threads;
@@ -67,39 +65,42 @@ void ShaMC::fit(SharedDataset &X, uint16_t nThreads) {
             *mediod_transactions[m] << transactions.getTransactions()->str();
         }
 
+        X.repartition(omp_get_num_threads());
+        for (int k = 0; k < mediods.size(); k++) {
+#pragma omp parallel private(me)
+            {
+                auto mediod = mediods.begin();
+                std::advance(mediod, k);
+                ParFPM pfpm;
+                uint64_t points = 0;
+                me = omp_get_thread_num();
+                auto myInput = new std::stringstream;
+                myInput->str(mediod_transactions[k]->str());
+                pfpm.Mine_Patterns(myInput, mediod_frequent_items[k], 10, 128, 1, sharedInfos[k]);
+                delete myInput;
+#pragma omp barrier
+                myInput = new std::stringstream;
+                myInput->str(mediod_frequent_items[k]->str());
 
-            for (k = 0; k < mediods.size(); k++) {
-#pragma omp parallel
-                {
+                if (omp_get_thread_num() == 0)
+                    subspace.buildSubspace(myInput, mediod->first);
 #pragma omp barrier
-                    auto mediod = mediods.begin();
-                    std::advance(mediod, k);
-                    ParFPM pfpm;
-                    uint64_t points = 0;
-                    auto myInput = new std::stringstream;
-                    myInput->str(mediod_transactions[k]->str());
-                    pfpm.Mine_Patterns(myInput, mediod_frequent_items[k], 10, 128, 1, sharedInfos[k]);
-                    delete myInput;
-#pragma omp barrier
-                    myInput = new std::stringstream;
-                    myInput->str(mediod_frequent_items[k]->str());
-                    DimensionSet centroid = subspace.buildSubspace(myInput, mediod->first);
-                    points = subspace.clusterPar(centroid, X, me, k);
+                points = subspace.clusterPar(X, me, k);
 
 #pragma omp atomic
-                    mediod_tot_points[k] += points;
+                mediod_tot_points[k] += points;
 
-                    if (omp_get_thread_num() == 0) {
-                        std::cout << mediod_tot_points[k] << std::endl;
-                        delete mediod_transactions[k];
-                        delete mediod_frequent_items[k];
-                        delete sharedInfos[k];
-                    }
+                if (omp_get_thread_num() == 0) {
+                    delete mediod_transactions[k];
+                    delete mediod_frequent_items[k];
+                    delete sharedInfos[k];
                 }
             }
-
-
-        end = omp_get_wtime();
-        std::cout << "Iteration " << i << " took " << (end - start) << "s" << std::endl;
+        }
     }
+
+    end = omp_get_wtime();
+    X.printSummaryStats();
+
+    std::cout << "Total Elapsed time: " << (end - start) << "s";
 }

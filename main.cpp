@@ -14,13 +14,15 @@ int main() {
     SharedSettings ss;
     ss.nThreads = num_threads;
     ss.width = 5;
-    ss.maxiter = 2;
+    ss.maxiter = 20;
+    ss.dataPath = path;
+    ss.resultPath = "/home/evan/CLionProjects/ShaMC/data/soma_PC5_clus.csv";
 
-    SharedDataset X(path, ss);
+    SharedDataset X(ss);
     X.printMetaInfo();
 
     ShaMC mc(ss);
-    mc.fit(X, num_threads);
-
+    mc.fit(X);
+    X.to_csv();
     return 0;
 }

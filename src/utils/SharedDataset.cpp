@@ -7,7 +7,7 @@
 #include <random>
 #include "../../headers/utils/SharedDataset.hpp"
 
-SharedDataset::SharedDataset(std::string &path, SharedSettings &parameters) {
+SharedDataset::SharedDataset(SharedSettings &parameters) {
     /*
      * Gathers metadata needed to maintain and distribute a shared dataset among threads accessing it concurrently.
      */
@@ -16,7 +16,7 @@ SharedDataset::SharedDataset(std::string &path, SharedSettings &parameters) {
     std::string column;
 
     // store data file meta-info
-    this->path = path;
+    this->path = parameters.dataPath;
     this->name = path.substr(path.rfind('/') + 1, path.size()); // TODO: make more portable (windows separator)
     this->delimiter = parameters.delimiter;
     this->hasIndex = parameters.index;
@@ -29,7 +29,7 @@ SharedDataset::SharedDataset(std::string &path, SharedSettings &parameters) {
     // check for file and get file size in bytes
     datastream.open(path, std::ifstream::ate | std::ifstream::binary);
     if (!datastream) {
-        throw FileNotFoundException(this->name); // TODO make more detailed exception
+        throw FileNotFoundException(this->name);
     }
     datastream.close();
 
@@ -53,7 +53,7 @@ SharedDataset::SharedDataset(std::string &path, SharedSettings &parameters) {
     for (int p = 0; p < this->num_threads - 1; p++)
         this->partitions.emplace_back(std::make_pair(this->rowsPerThread * p, this->rowsPerThread * (p + 1)));
 
-    this->partitions.emplace_back(std::make_pair(this->rowsPerThread * (this->num_threads - 1), this->row2byte.size()));
+    this->partitions.emplace_back(std::make_pair(this->rowsPerThread * (this->num_threads - 1), this->row2byte.size() - 1));
 
     this->_shape = std::make_pair(this->row2byte.size(), this->header.size());
 }
@@ -82,11 +82,11 @@ bool SharedDataset::readRows() {
                 row->id = column;
                 readIndex = false;
                 continue;
+            } else {
+                row->id = std::to_string(this->inMemRange.second);
             }
             row->cells.push_back(std::stod(column));
             row->idx = this->inMemRange.second;
-            row->clusterMembership = 0;
-            row->closestDist = DBL_MAX;
             bytes_read += sizeof(double);
         }
 
@@ -102,6 +102,33 @@ bool SharedDataset::readRows() {
     datastream.close();
     this->row2byte.pop_back(); // last element will be end of last row
 
+    return true;
+}
+
+bool SharedDataset::to_csv() {
+    std::stringstream ss;
+    std::ofstream out(parameters.resultPath);
+
+    for (auto &col : header){
+        ss << col << parameters.delimiter;
+    }
+    ss.seekp(-1, ss.cur);
+    ss.put('\n');
+
+    out << ss.str();
+
+    for (auto &row : inMemBuffer) {
+        ss.str(std::string());
+        ss << row->id << parameters.delimiter;
+        for (auto &cell : row->cells)
+            ss << cell << parameters.delimiter;
+        ss << row->clusterMembership;
+        ss.put('\n');
+
+        out << ss.str();
+    }
+
+    out.close();
     return true;
 }
 
@@ -158,11 +185,8 @@ uint64_t SharedDataset::getPartitionSize(PartitionID partitionID) {
     /*
      *  Returns the range of bytes of the dataset assigned to a given partition
      */
-    if (partitionID == this->num_threads - 1) {
-        return this->rowsPerThread + this->extraRows;
-    }
 
-    return this->rowsPerThread;
+    return this->partitions[partitionID].second - this->partitions[partitionID].first;
 }
 
 void SharedDataset::printMetaInfo() {
@@ -176,6 +200,31 @@ void SharedDataset::printMetaInfo() {
     std::cout << "  Threads Sharing: " << this->num_threads << std::endl;
 }
 
+void SharedDataset::printSummaryStats() {
+    std::unordered_map<int, int> clusters;
+
+    for (auto &row : inMemBuffer) {
+        clusters[row->clusterMembership]++;
+    }
+
+    std::cout << std::endl << "///////////////////////////////////////" << std::endl;
+    std::cout << "*************   Summary   *************" << std::endl;
+    std::cout << "///////////////////////////////////////" << std::endl;
+
+    if (clusters.empty()){
+        std::cout << "No clusters found!" << std::endl;
+        return;
+    }
+
+    std::cout << "Number of clusters found: " << clusters.size() << std::endl;
+    int i = 0;
+    for (auto &clus : clusters) {
+        std::cout << "Cluster " << i++ << ": " << std::endl;
+        std::cout << "  Number of points: " << clus.second << std::endl;
+        //std::cout << "  Cluster Mediod: " << clus.mediodID << std::endl;
+    }
+}
+
 void SharedDataset::repartition(uint16_t nThreads) {
     this->num_threads = nThreads;
     this->parameters.nThreads = nThreads;
@@ -186,6 +235,6 @@ void SharedDataset::repartition(uint16_t nThreads) {
     for (int p = 0; p < this->num_threads - 1; p++)
         this->partitions.emplace_back(std::make_pair(this->rowsPerThread * p, this->rowsPerThread * (p + 1) - 1));
 
-    this->partitions.emplace_back(std::make_pair(this->rowsPerThread * (this->num_threads - 1), this->row2byte.size()));
+    this->partitions.emplace_back(std::make_pair(this->rowsPerThread * (this->num_threads - 1), this->row2byte.size() - 1));
 
 }

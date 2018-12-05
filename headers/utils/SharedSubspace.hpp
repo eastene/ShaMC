@@ -22,14 +22,15 @@ struct DimensionSet {
 class SharedSubspace {
 private:
     SharedSettings _parameters;
+    DimensionSet _centroid;
 
 public:
 
-    explicit SharedSubspace(SharedSettings &parameters): _parameters{parameters} {};
+    explicit SharedSubspace(SharedSettings &parameters):_parameters{parameters}{};
 
-    DimensionSet buildSubspace(std::stringstream *dimensionSet, RowIndex mediodID);
+    void buildSubspace(std::stringstream *dimensionSet, RowIndex mediodID);
 
-    uint64_t clusterPar(DimensionSet subspace, SharedDataset &X, PartitionID me, int clusterNum);
+    uint64_t clusterPar(SharedDataset &X, PartitionID me, int clusterNum);
 
     void printCentroid(DimensionSet centroid);
 };

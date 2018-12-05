@@ -5,14 +5,21 @@
 #include <iostream>
 #include "../../headers/utils/SharedSubspace.hpp"
 
-DimensionSet SharedSubspace::buildSubspace(std::stringstream*dimensionSet, RowIndex mediodID) {
+void SharedSubspace::buildSubspace(std::stringstream *dimensionSet, RowIndex mediodID) {
     std::string line;
     std::string token;
     int support = 0;
     std::vector<int> tmpDimSet;
     double mu_best = 0.0;
-    DimensionSet centroid;
-    centroid.mediodID = mediodID;
+
+    _centroid.mediodID = mediodID;
+
+    if (!dimensionSet) {
+        _centroid.count = support;
+        _centroid.itemset = tmpDimSet;
+        _centroid.mu = mu_best;
+        return;
+    }
 
     while (!std::getline(*dimensionSet, line, '\n').eof()) {
         std::stringstream ss(line);
@@ -26,20 +33,20 @@ DimensionSet SharedSubspace::buildSubspace(std::stringstream*dimensionSet, RowIn
         double mu = support * pow((1 / _parameters.beta), tmpDimSet.size());
 
         if (mu > mu_best) {
-            centroid.count = support;
-            centroid.itemset = tmpDimSet;
-            centroid.mu = mu;
+            _centroid.count = support;
+            _centroid.itemset = tmpDimSet;
+            _centroid.mu = mu;
             mu_best = mu;
         }
 
         tmpDimSet.clear();
     }
 
-    return centroid;
+    return;
 }
 
-uint64_t SharedSubspace::clusterPar(DimensionSet centroid, SharedDataset &X, PartitionID me, int clusterNum) {
-    Row *mediod = X.getRow(centroid.mediodID);
+uint64_t SharedSubspace::clusterPar(SharedDataset &X, PartitionID me, int clusterNum) {
+    Row *mediod = X.getRow(_centroid.mediodID);
     Row *point;
     int tally;
     uint64_t numPoints = 0;
@@ -52,7 +59,7 @@ uint64_t SharedSubspace::clusterPar(DimensionSet centroid, SharedDataset &X, Par
         point = X.getRowFromPartition(i, me);
 
         tally = 0;
-        for (auto j : centroid.itemset) {
+        for (auto j : _centroid.itemset) {
             double tmp = fabs(point->cells[j] - mediod->cells[j]);
             if (tmp <= X.getSettings().width) {
                 tally++;
@@ -60,13 +67,14 @@ uint64_t SharedSubspace::clusterPar(DimensionSet centroid, SharedDataset &X, Par
             }
         }
 
-        if (tally == centroid.itemset.size() && dist < point->closestDist) {
+        if (tally == _centroid.itemset.size() && dist < point->closestDist) {
             point->clusterMembership = clusterNum;
             point->closestDist = dist;
+            point->clusMediod = mediod->id;
             numPoints++;
         }
     }
-    centroid.numPoints = numPoints;
+
     return numPoints;
 }
 

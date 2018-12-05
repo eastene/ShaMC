@@ -25,7 +25,7 @@ public:
     explicit ShaMC(SharedSettings &parameters) { this->parameters = parameters; }
 
     // find mediods using subspace clustering, overwrites any existing mediods
-    void fit(SharedDataset &X, uint16_t nThreads = 1);
+    void fit(SharedDataset &X);
 
     // predict labels using mediods found after fitting
     SharedDataset predict(SharedDataset &X);

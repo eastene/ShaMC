@@ -1029,7 +1029,7 @@ void FPM::Mine_Patterns_Parallel(std::stringstream *in, std::stringstream *out, 
         //be careful with this
         if (outdata->file) outdata->file->flush();
         if (outdata->file) outdata->close();
-
+/*
         cout << setiosflags(ios::fixed) << setprecision(2) << "Minsup: "
              << minsup << "\n"
              << "Number of threads: "
@@ -1038,7 +1038,7 @@ void FPM::Mine_Patterns_Parallel(std::stringstream *in, std::stringstream *out, 
              << info->totalitemsets << "\n"
              << "Time: "
              << timetotal << "\n";
-
+*/
     }
     //delete outdata;
     //Destroy();

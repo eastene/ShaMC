@@ -40,8 +40,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
 
 add_executable(ShaMC main.cpp
         src/utils/SharedDataset.cpp headers/utils/SharedDataset.hpp
-        headers/utils/SharedSettings.hpp src/utils/ProcessDataBuffer.cpp
-        headers/utils/ProcessDataBuffer.hpp
+        headers/utils/SharedSettings.hpp
         headers/utils/PortMacros.hpp
         src/cluster/ShaMC.cpp headers/cluster/ShaMC.hpp
         headers/utils/logger.h
