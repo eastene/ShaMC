@@ -14,6 +14,7 @@ void ShaMC::fit(SharedDataset &X) {
     PartitionID me;
     SharedSubspace subspace(parameters);
     double start, end;
+    int support = X.getSupport();
 
     // per-mediod datastructures
     std::vector<std::stringstream *> mediod_frequent_items;
@@ -40,9 +41,9 @@ void ShaMC::fit(SharedDataset &X) {
         sharedInfos.resize(mediods.size());
         X.repartition(inner_threads);
 
-#pragma omp parallel private(me)
-        {
-            int m = omp_get_thread_num() / inner_threads;
+#pragma omp parallel for private(me)
+        for (int k = 0; k < mediods.size(); k++){
+            int m = k / inner_threads;
             SharedTransactions transactions(1);
             auto mediod = mediods.begin();
             std::advance(mediod, m);
@@ -60,7 +61,7 @@ void ShaMC::fit(SharedDataset &X) {
 
             // once each thread has finished counting transactions, add them all to the respective
             // total for that mediod
-#pragma omp barrier
+//#pragma omp barrier
 #pragma omp critical
             *mediod_transactions[m] << transactions.getTransactions()->str();
         }
@@ -76,9 +77,10 @@ void ShaMC::fit(SharedDataset &X) {
                 me = omp_get_thread_num();
                 auto myInput = new std::stringstream;
                 myInput->str(mediod_transactions[k]->str());
-                pfpm.Mine_Patterns(myInput, mediod_frequent_items[k], 10, 128, 1, sharedInfos[k]);
+                pfpm.Mine_Patterns(myInput, mediod_frequent_items[k], support, 128, 1, sharedInfos[k]);
                 delete myInput;
 #pragma omp barrier
+                // TODO implement check if frequent items is empty
                 myInput = new std::stringstream;
                 myInput->str(mediod_frequent_items[k]->str());
 

@@ -219,7 +219,7 @@ void SharedDataset::printSummaryStats() {
     std::cout << "Number of clusters found: " << clusters.size() << std::endl;
     int i = 0;
     for (auto &clus : clusters) {
-        std::cout << "Cluster " << i++ << ": " << std::endl;
+        std::cout << "Cluster " << clus.first << ": " << std::endl;
         std::cout << "  Number of points: " << clus.second << std::endl;
         //std::cout << "  Cluster Mediod: " << clus.mediodID << std::endl;
     }

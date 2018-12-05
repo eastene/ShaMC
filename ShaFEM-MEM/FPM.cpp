@@ -922,7 +922,7 @@ void FPM::Mine_Patterns_Parallel(std::stringstream *in, std::stringstream *out, 
     //Create header table
     for (int i = 0; i < info->maxitems; i++) {
         if (info->globalcount[i] >= minsup) headlist.add(Head(i, info->globalcount[i], 0, 0));
-        totalcount += info->globalcount[i];
+        totalcount += info->globalcount[i] >= minsup ? info->globalcount[i] : 0;
     }
 
     if(totalcount == 0)

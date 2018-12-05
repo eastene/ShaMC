@@ -90,6 +90,8 @@ public:
 
     const SharedSettings getSettings() {return parameters;}
 
+    int getSupport(){return static_cast<int>(parameters.alpha * _shape.first);}
+
     void printMetaInfo();
 
     void printSummaryStats();
