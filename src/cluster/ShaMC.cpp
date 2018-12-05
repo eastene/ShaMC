@@ -13,12 +13,13 @@ void ShaMC::fit(SharedDataset &X, uint16_t nThreads) {
     int failedAttempts = 0;
     PartitionID me;
     double start, end;
+    SharedSubspace subspace(parameters);
 
     // per-mediod datastructures
     std::vector<std::stringstream *> mediod_frequent_items;
     std::vector<std::stringstream *> mediod_transactions;
     std::vector<uint64_t> mediod_tot_points;
-    std::vector<Info*> sharedInfos;
+    std::vector<Info *> sharedInfos;
 
     for (int i = 0; i < parameters.maxiter; i++) {
 
@@ -40,98 +41,64 @@ void ShaMC::fit(SharedDataset &X, uint16_t nThreads) {
         sharedInfos.resize(mediods.size());
         X.repartition(inner_threads);
 
-        std::vector<omp_lock_t> lock_m(mediods.size());
-        for (auto lock : lock_m)
-            omp_init_lock(&lock);
+        int k = 0; // mediod number
 #pragma omp parallel private(me)
         {
-#pragma ompfor schedule(static) private(me)
-            for (int k = 0; k < mediods.size() * inner_threads; k++) {
-                int m = k / inner_threads;
-                SharedTransactions transactions(1);
-                auto mediod = mediods.begin();
-                std::advance(mediod, m);
-                me = omp_get_thread_num() % inner_threads;
-                mediod_tot_points[m] = 0;
+            int m = omp_get_thread_num() / inner_threads;
+            SharedTransactions transactions(1);
+            auto mediod = mediods.begin();
+            std::advance(mediod, m);
+            me = omp_get_thread_num() % inner_threads;
+            mediod_tot_points[m] = 0;
 
-                omp_set_lock(&lock_m[m]);
-                if (me == 0) {
-                    mediod_transactions[m] = new std::stringstream;
-                    mediod_frequent_items[m] = new std::stringstream;
-                    sharedInfos[m] = new Info; // allocate here, not needed until later
-                }
-                omp_unset_lock(&lock_m[m]);
-
-                // each transaction object only has half of the transactions for a mediod
-                transactions.buildTransactionsPar(mediod->first, X, me);
-
-                omp_set_lock(&lock_m[m]);
-                *mediod_transactions[m] << transactions.getTransactions()->str();
-                omp_unset_lock(&lock_m[m]);
-
+            if (me == 0) {
+                mediod_transactions[m] = new std::stringstream;
+                mediod_frequent_items[m] = new std::stringstream;
+                sharedInfos[m] = new Info; // allocate here, not needed until later
             }
 
-            int m = 0;
-            for (auto mediod : mediods){
-                ParFPM pfpm;
-                uint64_t points = 0;
-                auto myInput = new std::stringstream;
-                myInput->str(mediod_transactions[m]->str());
-                pfpm.Mine_Patterns(myInput, mediod_frequent_items[m], 1, 128, 1, sharedInfos[m]);
-                delete myInput;
+            // each transaction object only has half of the transactions for a mediod
+            transactions.buildTransactionsPar(mediod->first, X, me);
+
+            // once each thread has finished counting transactions, add them all to the respective
+            // total for that mediod
 #pragma omp barrier
-                if (omp_get_thread_num() == 0) {
-                    //std::cout << mediod_tot_points[m] << std::endl;
-                    std::cout << mediod_frequent_items[m]->str() << std::endl;
-                    omp_set_lock(&lock_m[m]);
-                    delete mediod_transactions[m];
-                    delete mediod_frequent_items[m];
-                    delete sharedInfos[m];
-                    omp_unset_lock(&lock_m[m]);
-                }
-            }
-
+#pragma omp critical
+            *mediod_transactions[m] << transactions.getTransactions()->str();
         }
 
-        SharedSubspace subspace(parameters);
-/*        for (int m = 0; m < mediods.size(); m++) {
-#pragma omp parallel private(me)
-            {
-                ParFPM pfpm;
-                uint64_t points = 0;
-                auto mediod = mediods.begin();
-                std::advance(mediod, m);
-                auto myInput = new std::stringstream;
-                me = omp_get_thread_num();
 
-                myInput->str(mediod_transactions[m]->str());
-                if (omp_get_thread_num() == 0)
-                    sharedInfo = new Info;
+            for (k = 0; k < mediods.size(); k++) {
+#pragma omp parallel
+                {
 #pragma omp barrier
-                pfpm.Mine_Patterns(myInput, mediod_frequent_items[m], 1, 128, 1, sharedInfo);
-                delete myInput;
+                    auto mediod = mediods.begin();
+                    std::advance(mediod, k);
+                    ParFPM pfpm;
+                    uint64_t points = 0;
+                    auto myInput = new std::stringstream;
+                    myInput->str(mediod_transactions[k]->str());
+                    pfpm.Mine_Patterns(myInput, mediod_frequent_items[k], 10, 128, 1, sharedInfos[k]);
+                    delete myInput;
+#pragma omp barrier
+                    myInput = new std::stringstream;
+                    myInput->str(mediod_frequent_items[k]->str());
+                    DimensionSet centroid = subspace.buildSubspace(myInput, mediod->first);
+                    points = subspace.clusterPar(centroid, X, me, k);
 
-                //DimensionSet centroid = subspace.buildSubspace(*mediod_frequent_items[m], mediod->first);
+#pragma omp atomic
+                    mediod_tot_points[k] += points;
 
-                //points = subspace.clusterPar(centroid, X, me, m);
-
-//#pragma omp atomic
-                //mediod_tot_points[m] += points;
-
-                if (me == 0) {
-                    //std::cout << mediod_tot_points[m] << std::endl;
-                    std::cout << mediod_frequent_items[m]->str() << std::endl;
-                    omp_set_lock(&lock_m[m]);
-                    delete mediod_transactions[m];
-                    delete mediod_frequent_items[m];
-                    omp_unset_lock(&lock_m[m]);
+                    if (omp_get_thread_num() == 0) {
+                        std::cout << mediod_tot_points[k] << std::endl;
+                        delete mediod_transactions[k];
+                        delete mediod_frequent_items[k];
+                        delete sharedInfos[k];
+                    }
                 }
-
-                if (omp_get_thread_num() == 0)
-                    delete sharedInfo;
             }
-        }
-*/
+
+
         end = omp_get_wtime();
         std::cout << "Iteration " << i << " took " << (end - start) << "s" << std::endl;
     }

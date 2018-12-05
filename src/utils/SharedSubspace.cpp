@@ -5,7 +5,7 @@
 #include <iostream>
 #include "../../headers/utils/SharedSubspace.hpp"
 
-DimensionSet SharedSubspace::buildSubspace(std::stringstream &dimensionSet, RowIndex mediodID) {
+DimensionSet SharedSubspace::buildSubspace(std::stringstream*dimensionSet, RowIndex mediodID) {
     std::string line;
     std::string token;
     int support = 0;
@@ -14,7 +14,7 @@ DimensionSet SharedSubspace::buildSubspace(std::stringstream &dimensionSet, RowI
     DimensionSet centroid;
     centroid.mediodID = mediodID;
 
-    while (!std::getline(dimensionSet, line, '\n').eof()) {
+    while (!std::getline(*dimensionSet, line, '\n').eof()) {
         std::stringstream ss(line);
         while (std::getline(ss, token, ' ')) {
             if (token[0] == '(') {

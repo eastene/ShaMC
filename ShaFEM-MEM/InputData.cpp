@@ -135,7 +135,6 @@ Transaction *InputData::GetTransaction() {
                 idx = index[item];
                 //if index of this item  == 0 --> infrequent item
                 if (idx) {
-                    cout<<file->tellg()<<endl;
                     mask[((idx > 0) ? idx : -idx) - 1] = 1;
                     if (idx < 0 && isOK == false) isOK = true;
                     if (tran.size < tran.maxsize)

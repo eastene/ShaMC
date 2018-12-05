@@ -27,7 +27,7 @@ public:
 
     explicit SharedSubspace(SharedSettings &parameters): _parameters{parameters} {};
 
-    DimensionSet buildSubspace(std::stringstream &dimensionSet, RowIndex mediodID);
+    DimensionSet buildSubspace(std::stringstream *dimensionSet, RowIndex mediodID);
 
     uint64_t clusterPar(DimensionSet subspace, SharedDataset &X, PartitionID me, int clusterNum);
 
