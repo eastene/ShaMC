@@ -88,10 +88,6 @@ void InputData::SetDataMask(int totalitems, Headlist *Heads, int PartID, int Par
     //set index of frequent items
     memset(index, 0, sizeof(int) * totalitems);
     for (i = 0; i < n; i++) index[Heads->items[i].id] = (i % PartNum == PartID) ? -(i + 1) : (i + 1);
-    //for (i = 0 ; i < n ; i++) index[Heads->items[i].id] = -(i+1);
-
-//	for (i = 0 ; i < totalitems ; i++) index[i] = -1;
-//	for (i = 0 ; i < n ; i++) index[Heads->items[i].id] = i;
 
 }
 //----------------------------------------------------------------------------------
@@ -113,18 +109,17 @@ Transaction *InputData::GetTransaction() {
     do {
         if (pos == 0) {
             //read data into buffer if the buffer is empty
-            file->seekg(filepos, file->beg);
+            //file->seekg(filepos, file->beg);
             unsigned long tmppos;
-           // std::cout << file->str() << std::endl;
             file->read(buffer, IO_BUFFER_SIZE);
-            size = file->tellg() == -1 ? filesize - filepos : static_cast<unsigned long>(file->tellg()); // - filepos;
+            size = file->gcount(); // - filepos;
 
             buf = buffer;
 
             if (file->tellg() != -1) {
                 tmppos = file->tellg();
             } else {
-                tmppos = filesize + 1;
+                tmppos = filesize + filepos + 1;
             }
 
             //current file pos
@@ -140,6 +135,7 @@ Transaction *InputData::GetTransaction() {
                 idx = index[item];
                 //if index of this item  == 0 --> infrequent item
                 if (idx) {
+                    cout<<file->tellg()<<endl;
                     mask[((idx > 0) ? idx : -idx) - 1] = 1;
                     if (idx < 0 && isOK == false) isOK = true;
                     if (tran.size < tran.maxsize)
@@ -186,6 +182,7 @@ Transaction *InputData::GetTransaction() {
         pos = 0;
     } while (size > 0);
 
+    file->clear();
     file->seekg(filepos, file->beg);
 
     return 0;
@@ -255,9 +252,7 @@ int InputData::CountItemFrequence(Countlist *ItemCounts) {
     char *buf;
 
     tmpsize = filesize;
-
     do {
-        file->seekg(filepos, std::ios::beg);
         file->read(buffer, IO_BUFFER_SIZE);
         size = file->gcount();
 
@@ -284,7 +279,8 @@ int InputData::CountItemFrequence(Countlist *ItemCounts) {
         }
     } while (size > 0);
 
-    file->seekg(filepos, ios_base::beg);
+    file->clear();  // required to seek to beginning if read goes past end of file
+    file->seekg(filepos, file->beg);
 
     return trans;
 }
@@ -297,7 +293,6 @@ unsigned long InputData::GetFileSize() {
 
     // get the file size
     size = file->str().size();
-
 
     return size;
 }
@@ -324,6 +319,7 @@ void InputData::SetDataPartition(int PartID, int PartNum) {
 
     //adjust pos to fit transactions
     if (PartID) {
+        file->clear();
         file->seekg(filepos, ios_base::beg);
         buf = buffer;
         file->read(buffer, IO_BUFFER_SIZE);
@@ -341,6 +337,7 @@ void InputData::SetDataPartition(int PartID, int PartNum) {
 
     //adjust size and pos to fit transactions
     if (PartID != PartNum - 1) {
+        file->clear();
         file->seekg(filepos + filesize, ios_base::beg);
         buf = buffer;
         file->read(buffer, IO_BUFFER_SIZE);

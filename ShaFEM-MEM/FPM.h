@@ -131,10 +131,6 @@ public:
     void MergeOutput(char *ScrFileName, char *DesFileName);
 
     void
-    Mine_Patterns_Parallel(std::shared_ptr<std::stringstream> in, std::shared_ptr<std::stringstream> out, int minsup,
-                           int thres_K, int methods, Info *info);
-
-    void
     Mine_Patterns_Parallel(std::stringstream* in, std::stringstream* out, int minsup,
                            int thres_K, int methods, Info *info); // added function
 

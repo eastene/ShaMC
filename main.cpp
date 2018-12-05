@@ -6,13 +6,14 @@
 
 int main() {
 
-    int num_threads = 1;
+    int num_threads = 8;
+
     omp_set_num_threads(num_threads);
 
     std::string path = "/home/evan/CLionProjects/ShaMC/data/soma_PC5.csv";
     SharedSettings ss;
     ss.nThreads = num_threads;
-    ss.width = 20;
+    ss.width = 5;
     ss.maxiter = 2;
 
     SharedDataset X(path, ss);

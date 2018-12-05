@@ -40,7 +40,7 @@ using namespace std;
 #define TRANSACTION_BUFFER_SIZE 3000000  
 
 #ifndef IO_BUFFER_SIZE
-#define IO_BUFFER_SIZE (1024*1024)  //1MB
+#define IO_BUFFER_SIZE 1024  // 1kB
 #endif
 
 class InputData
