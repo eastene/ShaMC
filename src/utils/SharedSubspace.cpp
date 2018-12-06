@@ -14,14 +14,14 @@ DimensionSet SharedSubspace::buildSubspace(std::stringstream *dimensionSet, RowI
     DimensionSet subspace;
     subspace.mediodID = mediodID;
 
-    if (!dimensionSet) {
+    if (!dimensionSet || dimensionSet->str().empty()) {
         subspace.count = support;
         subspace.itemset = tmpDimSet;
         subspace.mu = mu_best;
         return subspace;
     }
 
-    while (!std::getline(*dimensionSet, line, '\n').eof()) {
+    while (!std::getline(*dimensionSet, line).eof()) {
         std::stringstream ss(line);
         while (std::getline(ss, token, ' ')) {
             if (token[0] == '(') {

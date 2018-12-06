@@ -44,8 +44,8 @@ void ShaMC::fit(SharedDataset &X) {
         sharedInfos.resize(mediods.size());
         X.repartition(inner_threads);
 
-#pragma omp parallel for private(me)
-        for (int k = 0; k < mediods.size(); k++){
+#pragma omp parallel for schedule(static) shared(mediod_transactions, mediod_frequent_items, sharedInfos) private(me)
+        for (int k = 0; k < mediods.size() * inner_threads; k++){
             int m = k / inner_threads;
             SharedTransactions transactions(1);
             auto mediod = mediods.begin();
@@ -64,12 +64,10 @@ void ShaMC::fit(SharedDataset &X) {
 
             // once each thread has finished counting transactions, add them all to the respective
             // total for that mediod
-//#pragma omp barrier
 #pragma omp critical
             *mediod_transactions[m] << transactions.getTransactions()->str();
         }
 
-        X.repartition(omp_get_num_threads());
         DimensionSet tempset;
         for (int k = 0; k < mediods.size(); k++) {
 #pragma omp parallel private(me)
@@ -77,23 +75,15 @@ void ShaMC::fit(SharedDataset &X) {
                 auto mediod = mediods.begin();
                 std::advance(mediod, k);
                 ParFPM pfpm;
-                me = omp_get_thread_num();
                 auto myInput = new std::stringstream;
                 myInput->str(mediod_transactions[k]->str());
                 pfpm.Mine_Patterns(myInput, mediod_frequent_items[k], support, 128, 1, sharedInfos[k]);
                 delete myInput;
 #pragma omp barrier
-                if (mediod_frequent_items[k]->str().empty()) {
-                    myInput = new std::stringstream;
-                    myInput->str(mediod_frequent_items[k]->str());
-
-                    if (omp_get_thread_num() == 0)
-                        tempset = subspace.buildSubspace(myInput, mediod->first);
-#pragma omp barrier
-                }
 
                 if (omp_get_thread_num() == 0) {
-                    tempset.numPoints = mediod_tot_points[k];
+                    std::cout << mediod_frequent_items[k]->str() << std::endl;
+                    tempset = subspace.buildSubspace(mediod_frequent_items[k], mediod->first);
 
                     if (subspace.compareSubspaces(tempset, bestSubspace) == 1)
                         bestSubspace = tempset;
@@ -112,6 +102,7 @@ void ShaMC::fit(SharedDataset &X) {
             failedAttempts = 0;
         }
 
+        X.repartition(omp_get_num_threads());
 #pragma omp parallel private(me)
         {
             uint64_t points;
@@ -121,13 +112,14 @@ void ShaMC::fit(SharedDataset &X) {
 #pragma omp atomic
             bestSubspace.numPoints += points;
         }
+
         std::cout << "New cluster " << num_clusts++ << " found" << std::endl;
         std::cout << "  Points: " << bestSubspace.numPoints << std::endl;
         std::cout << "  Dimensions: " << bestSubspace.itemset.size() << std::endl;
     }
 
-    if (num_clusts == 0) {
-        std::cout << "No clusters found  " << parameters.maxiter << " iteraions." << std::endl;
+    if (failedAttempts >= parameters.maxAttempts) {
+        std::cout << "No new clusters found in " << failedAttempts << " attempts." << std::endl;
     }
 
     end = omp_get_wtime();

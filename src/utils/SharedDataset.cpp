@@ -64,7 +64,7 @@ bool SharedDataset::readRows() {
 
     std::ifstream datastream(this->path);
 
-    datastream.seekg(this->row2byte[0], std::ifstream::beg);
+    datastream.seekg(this->row2byte[0], std::ifstream::beg); // skip header (if necessary)
 
     // read in data to buffer until full or out of data
     uint64_t bytes_read = 0;
@@ -226,6 +226,8 @@ void SharedDataset::printSummaryStats() {
 }
 
 void SharedDataset::repartition(uint16_t nThreads) {
+    if (this->num_threads == nThreads)
+        return;
     this->num_threads = nThreads;
     this->parameters.nThreads = nThreads;
     this->partitions.clear();
