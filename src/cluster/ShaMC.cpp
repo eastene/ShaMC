@@ -7,6 +7,7 @@
 
 void ShaMC::fit(SharedDataset &X) {
     bool isOk = true;
+    bool failed = true;
     RowIndex clusterCount = 0;
     RowIndex currentSize = X.shape().first;
     int minPoints = (int) ceil(parameters.alpha * X.shape().first);
@@ -97,17 +98,18 @@ void ShaMC::fit(SharedDataset &X) {
                     if (subspace.compareSubspaces(tempset, bestSubspace) == 1)
                         bestSubspace = tempset;
 
-                    if (bestSubspace.mu == 0){
-                        failedAttempts++;
-                        isOk=false;
-                    }
-
-
                     delete mediod_transactions[k];
                     delete mediod_frequent_items[k];
                     delete sharedInfos[k];
                 }
             }
+        }
+
+        if (bestSubspace.mu == 0){
+            failedAttempts++;
+            continue; // retry
+        } else{
+            failedAttempts = 0;
         }
 
 #pragma omp parallel private(me)
@@ -122,6 +124,10 @@ void ShaMC::fit(SharedDataset &X) {
         std::cout << "New cluster " << num_clusts++ << " found" << std::endl;
         std::cout << "  Points: " << bestSubspace.numPoints << std::endl;
         std::cout << "  Dimensions: " << bestSubspace.itemset.size() << std::endl;
+    }
+
+    if (num_clusts == 0) {
+        std::cout << "No clusters found  " << parameters.maxiter << " iteraions." << std::endl;
     }
 
     end = omp_get_wtime();

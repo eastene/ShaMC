@@ -22,7 +22,6 @@ struct DimensionSet {
 class SharedSubspace {
 private:
     SharedSettings _parameters;
-    DimensionSet _centroid;
 
 public:
 
