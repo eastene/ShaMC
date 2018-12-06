@@ -14,9 +14,9 @@
 struct DimensionSet {
     RowIndex mediodID;
     std::vector<int> itemset;
-    int count;
-    double mu;
-    uint64_t numPoints;
+    int count = 0;
+    double mu = 0;
+    uint64_t numPoints = 0;
 };
 
 class SharedSubspace {
@@ -28,9 +28,11 @@ public:
 
     explicit SharedSubspace(SharedSettings &parameters):_parameters{parameters}{};
 
-    void buildSubspace(std::stringstream *dimensionSet, RowIndex mediodID);
+    DimensionSet buildSubspace(std::stringstream *dimensionSet, RowIndex mediodID);
 
-    uint64_t clusterPar(SharedDataset &X, PartitionID me, int clusterNum);
+    uint64_t clusterPar(SharedDataset &X, PartitionID me, int clusterNum, DimensionSet &subspace);
+
+    int compareSubspaces(DimensionSet &subspace1, DimensionSet &subspace2);
 
     void printCentroid(DimensionSet centroid);
 };

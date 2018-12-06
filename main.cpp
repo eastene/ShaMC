@@ -13,8 +13,8 @@ int main() {
     std::string path = "/home/evan/CLionProjects/ShaMC/data/soma_PC5.csv";
     SharedSettings ss;
     ss.nThreads = num_threads;
-    ss.width = 5;
-    ss.maxiter = 20;
+    ss.width = 20;
+    ss.maxiter = 2;
     ss.dataPath = path;
     ss.resultPath = "/home/evan/CLionProjects/ShaMC/data/soma_PC5_clus.csv";
 

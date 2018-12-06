@@ -65,7 +65,7 @@ private:
     MultiRow inMemBuffer;  // may hold entire dataset if small enough
     std::pair<uint64_t, uint64_t> inMemRange; // range of rows in memory
     std::pair<RowIndex, int> _shape = std::make_pair(NULL, NULL);
-
+    int num_clusters;
 public:
 
     explicit SharedDataset(SharedSettings &parameters);
