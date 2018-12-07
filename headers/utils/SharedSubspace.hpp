@@ -31,7 +31,7 @@ public:
 
     uint64_t clusterPar(SharedDataset &X, PartitionID me, int clusterNum, DimensionSet &subspace);
 
-    int compareSubspaces(DimensionSet &subspace1, DimensionSet &subspace2);
+    bool compareSubspaces(DimensionSet &subspace1, DimensionSet &subspace2);
 
     void printCentroid(DimensionSet centroid);
 };

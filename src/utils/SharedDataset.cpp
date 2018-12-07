@@ -48,14 +48,16 @@ SharedDataset::SharedDataset(SharedSettings &parameters) {
     datastream.close();
     readRows();
 
-    this->rowsPerThread = this->num_threads > 0 ? this->inMemBuffer.size() / this->num_threads : this->inMemBuffer.size();
-    this->extraRows = this->num_threads > 0 ? this->inMemBuffer.size() % this->num_threads : 0;
+    this->rowsPerThread = this->num_threads > 0 ? this->row2byte.size() / this->num_threads : this->row2byte.size();
+    this->extraRows = this->num_threads > 0 ? this->row2byte.size() % this->num_threads : 0;
     for (int p = 0; p < this->num_threads - 1; p++)
         this->partitions.emplace_back(std::make_pair(this->rowsPerThread * p, this->rowsPerThread * (p + 1) - 1));
 
-    this->partitions.emplace_back(std::make_pair(this->rowsPerThread * (this->num_threads - 1), this->inMemBuffer.size() - 1));
+    this->partitions.emplace_back(std::make_pair(this->rowsPerThread * (this->num_threads - 1), this->row2byte.size() - 1));
 
     this->_shape = std::make_pair(this->row2byte.size(), this->header.size());
+
+    this->unclustered_points = this->_shape.first;
 }
 
 bool SharedDataset::readRows() {
@@ -132,6 +134,17 @@ bool SharedDataset::to_csv() {
     return true;
 }
 
+bool SharedDataset::rowUnclustered(RowIndex index) {
+    if (inMemBuffer[index]->clusterMembership == -1)
+        return true;
+    return false;
+}
+
+bool SharedDataset::rowUnclusteredFromPartition(RowIndex index, PartitionID partitionID) {
+    RowIndex partInd = this->partitions[partitionID].first + index;
+    return rowUnclustered(partInd);
+}
+
 Row *SharedDataset::getRow(RowIndex index) {
 /*
     if (index > (this->rowsPerThread * (this->num_threads - 1)))
@@ -148,14 +161,14 @@ Row *SharedDataset::getRowAsynch(RowIndex index) {
     return this->inMemBuffer[index];
 }
 
-Row *SharedDataset::getRowFromPartition(RowIndex index, PartitionID paritionID) {
-    RowIndex partInd = this->partitions[paritionID].first + index;
+Row *SharedDataset::getRowFromPartition(RowIndex index, PartitionID partitionID) {
+    RowIndex partInd = this->partitions[partitionID].first + index;
     return getRow(partInd);
 }
 
-Row *SharedDataset::getRowFromPartitionAsynch(RowIndex index, PartitionID paritionID) {
+Row *SharedDataset::getRowFromPartitionAsynch(RowIndex index, PartitionID partitionID) {
     // TODO: read from disk if needed
-    RowIndex partInd = this->partitions[paritionID].first + index;
+    RowIndex partInd = this->partitions[partitionID].first + index;
     return getRow(partInd);
 }
 
@@ -209,7 +222,10 @@ void SharedDataset::printSummaryStats() {
     std::unordered_map<int, int> clusters;
 
     for (auto &row : inMemBuffer) {
-        clusters[row->clusterMembership]++;
+        if (clusters.find(row->clusterMembership) != clusters.end())
+            clusters[row->clusterMembership]++;
+        else
+            clusters[row->clusterMembership] = 1;
     }
 
     std::cout << std::endl << "///////////////////////////////////////" << std::endl;
@@ -224,7 +240,10 @@ void SharedDataset::printSummaryStats() {
     std::cout << "Number of clusters found: " << clusters.size() << std::endl;
     int i = 0;
     for (auto &clus : clusters) {
-        std::cout << "Cluster " << clus.first << ": " << std::endl;
+        if (clus.first != -1)
+            std::cout << "Cluster " << clus.first << ": " << std::endl;
+        else
+            std::cout << "Outliers:" << std::endl;
         std::cout << "  Number of points: " << clus.second << std::endl;
         //std::cout << "  Cluster Mediod: " << clus.mediodID << std::endl;
     }
@@ -238,11 +257,11 @@ void SharedDataset::repartition(uint16_t nThreads) {
     this->parameters.nThreads = nThreads;
     this->partitions.clear();
 
-    this->rowsPerThread = this->num_threads > 0 ? this->inMemBuffer.size() / this->num_threads : this->inMemBuffer.size();
-    this->extraRows = this->num_threads > 0 ? this->inMemBuffer.size() % this->num_threads : 0;
+    this->rowsPerThread = this->num_threads > 0 ? this->row2byte.size() / this->num_threads : this->row2byte.size();
+    this->extraRows = this->num_threads > 0 ? this->row2byte.size() % this->num_threads : 0;
     for (int p = 0; p < this->num_threads - 1; p++)
         this->partitions.emplace_back(std::make_pair(this->rowsPerThread * p, this->rowsPerThread * (p + 1) - 1));
 
-    this->partitions.emplace_back(std::make_pair(this->rowsPerThread * (this->num_threads - 1), this->inMemBuffer.size() - 1));
+    this->partitions.emplace_back(std::make_pair(this->rowsPerThread * (this->num_threads - 1), this->row2byte.size() - 1));
 
 }

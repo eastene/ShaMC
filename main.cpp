@@ -10,13 +10,13 @@ int main() {
 
     omp_set_num_threads(num_threads);
 
-    std::string path = "/home/evan/CLionProjects/ShaMC/data/soma_PC5.csv";
+    std::string path = "/home/evan/CLionProjects/ShaMC/data/synthetic_5_100_1000.csv";
     SharedSettings ss;
     ss.nThreads = num_threads;
     ss.width = 20;
-    ss.maxiter = 2;
+    ss.maxiter = 1000;
     ss.dataPath = path;
-    ss.resultPath = "/home/evan/CLionProjects/ShaMC/data/soma_PC5_clus.csv";
+    ss.resultPath = "/home/evan/CLionProjects/ShaMC/data/synthetic_5_100_1000_clus.csv";
 
     SharedDataset X(ss);
     X.printMetaInfo();

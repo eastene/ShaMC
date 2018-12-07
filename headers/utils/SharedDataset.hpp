@@ -77,15 +77,16 @@ public:
 
     std::pair<RowIndex, int> shape() { return _shape; }
 
-    void maskRow(RowIndex index);  // masks row so that it will not be used in future computations
+    bool rowUnclustered(RowIndex index);
+    bool rowUnclusteredFromPartition(RowIndex index, PartitionID partitionID);
 
     Row* getRow(RowIndex index);
 
     Row* getRowAsynch(RowIndex index);
 
-    Row* getRowFromPartition(RowIndex index, PartitionID paritionID);
+    Row* getRowFromPartition(RowIndex index, PartitionID partitionID);
 
-    Row* getRowFromPartitionAsynch(RowIndex index, PartitionID paritionID);
+    Row* getRowFromPartitionAsynch(RowIndex index, PartitionID partitionID);
 
     MultiRowMap pickMediodsRandom(uint16_t n);
 

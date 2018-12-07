@@ -22,17 +22,19 @@ void ShaMC::fit(SharedDataset &X) {
     std::vector<Info *> sharedInfos;
 
     start = omp_get_wtime();
-    for (int i = 0; i < parameters.maxiter; i++) {
+    int i;
+    for (i = 0; i < parameters.maxiter; i++) {
 
         // termination conditions
         if (currentSize <= minPoints || failedAttempts >= parameters.maxAttempts) {
+            std::cout << "Not enough points remaining to form cluster. Stopping." << std::endl;
             break;
         }
 
         clusterCount = currentSize <= parameters.mediods ? currentSize : parameters.mediods;
         mediods = X.pickMediodsRandom(clusterCount);
 
-        DimensionSet bestSubspace;
+
 
         //int inner_threads = parameters.nThreads > mediods.size() ? parameters.nThreads / mediods.size() : 1;
         // resize per-mediod data structures to match number of mediods
@@ -42,6 +44,7 @@ void ShaMC::fit(SharedDataset &X) {
         //X.repartition(inner_threads);
 
 //#pragma omp parallel for schedule(static) shared(mediod_transactions, mediod_frequent_items, sharedInfos) private(me)
+        DimensionSet bestSubspace;
         DimensionSet tempset;
         for (int k = 0; k < mediods.size(); k++) {
 #pragma omp parallel private(me)
@@ -76,12 +79,13 @@ void ShaMC::fit(SharedDataset &X) {
 #pragma omp barrier
 
                 if (omp_get_thread_num() == 0) {
-                    std::cout << mediod_frequent_items[k]->str() << std::endl;
                     tempset = subspace.buildSubspace(mediod_frequent_items[k], mediod->first);
 
-                    if (subspace.compareSubspaces(tempset, bestSubspace) == 1)
+                    // update best subspace
+                    if (subspace.compareSubspaces(tempset, bestSubspace))
                         bestSubspace = tempset;
 
+                    // delete stringstream pointers (clearing them doesn't seem to work)
                     delete mediod_transactions[k];
                     delete mediod_frequent_items[k];
                     delete sharedInfos[k];
@@ -99,7 +103,7 @@ void ShaMC::fit(SharedDataset &X) {
 #pragma omp parallel private(me)
         {
             uint64_t points;
-            me = omp_get_num_threads();
+            me = omp_get_thread_num();
             points = subspace.clusterPar(X, me, num_clusts_found, bestSubspace);
 
 #pragma omp atomic
@@ -107,14 +111,20 @@ void ShaMC::fit(SharedDataset &X) {
         }
 
         std::cout << "New cluster " << num_clusts_found++ << " found" << std::endl;
+        std::cout<< "  Support: " << bestSubspace.count << std::endl;
         std::cout << "  Points: " << bestSubspace.numPoints << std::endl;
         std::cout << "  Dimensions: " << bestSubspace.itemset.size() << std::endl;
 
+        bestSubspace.mu = 0.0; bestSubspace.numPoints = 0; bestSubspace.itemset.clear(); bestSubspace.count = 0;
         currentSize = X.getNumUnclustered();
     }
 
     if (failedAttempts >= parameters.maxAttempts) {
         std::cout << "No new clusters found in " << failedAttempts << " attempts." << std::endl;
+    }
+
+    if (i >= parameters.maxiter) {
+        std::cout << "Stopped after " << i << " iterations." << std::endl;
     }
 
     end = omp_get_wtime();

@@ -19,7 +19,6 @@ private:
     uint32_t _numTransactions;
     uint64_t _numItems;
     uint16_t _numThreads;
-    bool _reduced;
 
     //Countlist _counts;
 
@@ -30,7 +29,6 @@ public:
         _transactions = new std::stringstream("");
         _numTransactions = 0;
         _numItems = 0;
-        _reduced = false;
     }
 
     explicit SharedTransactions(uint16_t numThreads) {
@@ -38,7 +36,6 @@ public:
         _transactions = new std::stringstream("");
         _numTransactions = 0;
         _numItems = 0;
-        _reduced = false;
     }
 
     ~SharedTransactions() {delete _transactions;}

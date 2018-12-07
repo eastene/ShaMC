@@ -16,28 +16,27 @@ void SharedTransactions::buildTransactionsPar(RowIndex centroidID, SharedDataset
     _numTransactions = 0;
     _numItems = 0;
 
-    _reduced = false;
-
     for (uint64_t i = 0; i < X.getPartitionSize(me); i++) {
-        flag = false;
-        if (i == centroid->idx)
+
+        if (i == centroid->idx || !X.rowUnclusteredFromPartition(i, me))
             continue;
 
         point = X.getRowFromPartition(i, me);
+
+        flag = false;
         // only use points not already assigned to a cluster
-        if (point->clusterMembership == -1) {
-            for (Dimension j = 0; j < point->cells.size(); j++) {
-                if (fabs(point->cells[j] - centroid->cells[j]) <= X.getSettings().width) {
-                    *_transactions << std::to_string(j) << " ";
-                    flag = true;
-                    _numItems++;
-                }
-            }
-            if (flag) {
-                *_transactions << "\n";
-#pragma omp atomic
-                _numTransactions++;
+        for (Dimension j = 0; j < point->cells.size(); j++) {
+            if (fabs(point->cells[j] - centroid->cells[j]) <= X.getSettings().width) {
+                *_transactions << std::to_string(j) << " ";
+                flag = true;
+                _numItems++;
             }
         }
+        if (flag) {
+            *_transactions << "\n";
+#pragma omp atomic
+            _numTransactions++;
+        }
     }
+
 }
