@@ -58,20 +58,23 @@ uint64_t SharedSubspace::clusterPar(SharedDataset &X, PartitionID me, int cluste
 
         point = X.getRowFromPartition(i, me);
 
-        tally = 0;
-        for (auto j : subspace.itemset) {
-            double tmp = fabs(point->cells[j] - mediod->cells[j]);
-            if (tmp <= X.getSettings().width) {
-                tally++;
-                dist += tmp;
+        if (point->clusterMembership == -1) {
+            tally = 0;
+            for (auto j : subspace.itemset) {
+                double tmp = fabs(point->cells[j] - mediod->cells[j]);
+                if (tmp <= X.getSettings().width) {
+                    tally++;
+                    dist += tmp;
+                }
             }
-        }
 
-        if (tally == subspace.itemset.size() && dist < point->closestDist) {
-            point->clusterMembership = clusterNum;
-            point->closestDist = dist;
-            point->clusMediod = mediod->id;
-            numPoints++;
+            if (tally == subspace.itemset.size() && dist < point->closestDist) {
+                point->clusterMembership = clusterNum;
+                point->closestDist = dist;
+                point->clusMediod = mediod->id;
+                X.decNumUnclustered();
+                numPoints++;
+            }
         }
     }
 

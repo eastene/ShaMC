@@ -6,8 +6,6 @@
 #include "../../headers/cluster/ShaMC.hpp"
 
 void ShaMC::fit(SharedDataset &X) {
-    bool isOk = true;
-    bool failed = true;
     RowIndex clusterCount = 0;
     RowIndex currentSize = X.shape().first;
     int minPoints = (int) ceil(parameters.alpha * X.shape().first);
@@ -15,14 +13,14 @@ void ShaMC::fit(SharedDataset &X) {
     PartitionID me;
     SharedSubspace subspace(parameters);
     double start, end;
-    int num_clusts = 0;
+    int num_clusts_found = 0;
     int support = X.getSupport();
 
     // per-mediod datastructures
     std::vector<std::stringstream *> mediod_frequent_items;
     std::vector<std::stringstream *> mediod_transactions;
-    std::vector<uint64_t> mediod_tot_points;
     std::vector<Info *> sharedInfos;
+
     start = omp_get_wtime();
     for (int i = 0; i < parameters.maxiter; i++) {
 
@@ -36,18 +34,17 @@ void ShaMC::fit(SharedDataset &X) {
 
         DimensionSet bestSubspace;
 
-        int inner_threads = parameters.nThreads > mediods.size() ? parameters.nThreads / mediods.size() : 1;
+        //int inner_threads = parameters.nThreads > mediods.size() ? parameters.nThreads / mediods.size() : 1;
         // resize per-mediod data structures to match number of mediods
         mediod_transactions.resize(mediods.size());
         mediod_frequent_items.resize(mediods.size());
-        mediod_tot_points.resize(mediods.size());
         sharedInfos.resize(mediods.size());
-        X.repartition(inner_threads);
+        //X.repartition(inner_threads);
 
 //#pragma omp parallel for schedule(static) shared(mediod_transactions, mediod_frequent_items, sharedInfos) private(me)
         DimensionSet tempset;
         for (int k = 0; k < mediods.size(); k++) {
-#pragma omp parallel
+#pragma omp parallel private(me)
             {
                 SharedTransactions transactions(1);
                 auto mediod = mediods.begin();
@@ -99,22 +96,21 @@ void ShaMC::fit(SharedDataset &X) {
             failedAttempts = 0;
         }
 
-        X.repartition(omp_get_num_threads());
 #pragma omp parallel private(me)
         {
             uint64_t points;
             me = omp_get_num_threads();
-            points = subspace.clusterPar(X, me, num_clusts, bestSubspace);
+            points = subspace.clusterPar(X, me, num_clusts_found, bestSubspace);
 
 #pragma omp atomic
             bestSubspace.numPoints += points;
         }
 
-        std::cout << "New cluster " << num_clusts++ << " found" << std::endl;
+        std::cout << "New cluster " << num_clusts_found++ << " found" << std::endl;
         std::cout << "  Points: " << bestSubspace.numPoints << std::endl;
         std::cout << "  Dimensions: " << bestSubspace.itemset.size() << std::endl;
 
-
+        currentSize = X.getNumUnclustered();
     }
 
     if (failedAttempts >= parameters.maxAttempts) {

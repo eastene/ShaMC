@@ -132,10 +132,6 @@ bool SharedDataset::to_csv() {
     return true;
 }
 
-void SharedDataset::maskRow(RowIndex index) {
-
-}
-
 Row *SharedDataset::getRow(RowIndex index) {
 /*
     if (index > (this->rowsPerThread * (this->num_threads - 1)))
@@ -191,6 +187,11 @@ uint64_t SharedDataset::getPartitionSize(PartitionID partitionID) {
      */
 
     return this->partitions[partitionID].second - this->partitions[partitionID].first;
+}
+
+void SharedDataset::decNumUnclustered() {
+#pragma omp atomic
+    unclustered_points--;
 }
 
 void SharedDataset::printMetaInfo() {

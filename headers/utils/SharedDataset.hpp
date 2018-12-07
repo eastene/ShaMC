@@ -65,7 +65,8 @@ private:
     MultiRow inMemBuffer;  // may hold entire dataset if small enough
     std::pair<uint64_t, uint64_t> inMemRange; // range of rows in memory
     std::pair<RowIndex, int> _shape = std::make_pair(NULL, NULL);
-    int num_clusters;
+    uint64_t unclustered_points;
+
 public:
 
     explicit SharedDataset(SharedSettings &parameters);
@@ -93,6 +94,10 @@ public:
     const SharedSettings getSettings() {return parameters;}
 
     int getSupport(){return static_cast<int>(parameters.alpha * _shape.first);}
+
+    uint64_t getNumUnclustered(){return unclustered_points;}
+
+    void decNumUnclustered();
 
     void printMetaInfo();
 
