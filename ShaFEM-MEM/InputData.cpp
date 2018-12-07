@@ -54,7 +54,7 @@ bool InputData::Open(std::stringstream *in) {
 //----------------------------------------------------------------------------------
 void InputData::Close() {
     if (file) {
-        //if(buffer) delete[] buffer;
+        delete[] buffer;
         //file->str("");
         //fclose(file);
         //delete file;
@@ -119,7 +119,7 @@ Transaction *InputData::GetTransaction() {
             if (file->tellg() != -1) {
                 tmppos = file->tellg();
             } else {
-                tmppos = filesize + filepos + 1;
+                tmppos = filesize + filepos - 1;
             }
 
             //current file pos
@@ -180,6 +180,7 @@ Transaction *InputData::GetTransaction() {
         }
         pos = 0;
     } while (size > 0);
+
 
     file->clear();
     file->seekg(filepos, file->beg);
@@ -290,8 +291,14 @@ int InputData::CountItemFrequence(Countlist *ItemCounts) {
 unsigned long InputData::GetFileSize() {
     unsigned long size = 0;
 
+    file->clear();
+    file->seekg(0, file->end);
+
     // get the file size
-    size = file->str().size();
+    size = file->tellg();
+
+    file->clear();
+    file->seekg(filepos, file->beg);
 
     return size;
 }
@@ -319,7 +326,7 @@ void InputData::SetDataPartition(int PartID, int PartNum) {
     //adjust pos to fit transactions
     if (PartID) {
         file->clear();
-        file->seekg(filepos, ios_base::beg);
+        file->seekg(filepos, file->beg);
         buf = buffer;
         file->read(buffer, IO_BUFFER_SIZE);
         n = file->gcount();
@@ -346,8 +353,8 @@ void InputData::SetDataPartition(int PartID, int PartNum) {
                 filesize += (i + 1);
                 break;
             }
-
     }
+    file->seekg(filepos,file->beg);
 
     return;
 }

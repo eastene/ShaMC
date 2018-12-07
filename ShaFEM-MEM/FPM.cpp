@@ -1019,7 +1019,7 @@ void FPM::Mine_Patterns_Parallel(std::stringstream *in, std::stringstream *out, 
     timeio = 0;
 
     //need a better method to syncronize the output writing process
-    //if (threadid !=0) outdata->close();
+    if (threadid !=0) outdata->flush();
 
 #pragma omp barrier
     timemine = omp_get_wtime() - timemine;
@@ -1050,8 +1050,8 @@ void FPM::Mine_Patterns_Parallel(std::stringstream *in, std::stringstream *out, 
 void ParFPM::Mine_Patterns(std::stringstream *in, std::stringstream *out, int minsup,
                            int thres_K, int methods, Info *info) {
 
-#pragma omp master
-    BuildTidSizeLookupTable(OneCount, OnePos);
+    if(omp_get_thread_num() == 0)
+        BuildTidSizeLookupTable(OneCount, OnePos);
 
     int threadnum = omp_get_num_threads();
 

@@ -53,6 +53,7 @@ public:
 		 ~OutputData();
 		bool open(std::stringstream* out, int minsup);
 		void close();
+		void flush();
 		bool isopen() {return (file?true:false);};
 		void write(int item, int count,int size);
 		void write(int *items,int lenght,int level, int count,int size);

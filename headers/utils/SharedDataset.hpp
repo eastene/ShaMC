@@ -29,7 +29,6 @@ struct Row {
     RowIndex idx;
     std::vector<double> cells;
     int clusterMembership = -1;
-    double closestDist = DBL_MAX;
     std::string clusMediod = "";
 };
 /*

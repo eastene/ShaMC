@@ -24,13 +24,14 @@ DimensionSet SharedSubspace::buildSubspace(std::stringstream *dimensionSet, RowI
 
     while (!std::getline(*dimensionSet, line).eof()) {
         std::stringstream ss(line);
+
         while (std::getline(ss, token, ' ')) {
-            if (token[0] == '(') {
+            if (token[0] == '(')
                 support = std::stoi(token.substr(1, token.size() - 2)); // support in parens
-            } else {
+            else
                 tmpDimSet.push_back(std::stoi(token));
-            }
         }
+
         double mu = support * pow((1 / _parameters.beta), tmpDimSet.size());
 
         if (mu > mu_best) {
@@ -51,7 +52,6 @@ uint64_t SharedSubspace::clusterPar(SharedDataset &X, PartitionID me, int cluste
     Row *point;
     uint64_t numPoints = 0;
     bool flag;
-    double tmp;
     uint64_t ulim = X.getPartitionSize(me);
 
     for (uint64_t i = 0; i < ulim; i++) {
@@ -62,8 +62,7 @@ uint64_t SharedSubspace::clusterPar(SharedDataset &X, PartitionID me, int cluste
         flag = true;
 
         for (auto j : subspace.itemset) {
-            tmp = fabs(point->cells[j] - mediod->cells[j]);
-            if (tmp > X.getSettings().width) {  // skip partition if not within width
+            if (fabs(point->cells[j] - mediod->cells[j]) > X.getSettings().width) {  // skip partition if not within width
                 flag = false;
                 break;
             }
@@ -76,11 +75,6 @@ uint64_t SharedSubspace::clusterPar(SharedDataset &X, PartitionID me, int cluste
         point->clusMediod = mediod->id;
         X.decNumUnclustered();
         numPoints++;
-
-        // no need to continue looking in the dataset if the number of points is equal to the support
-        // no more points will be in range of cluster
-        if (numPoints >= subspace.count)
-            break;
     }
 
     return numPoints;

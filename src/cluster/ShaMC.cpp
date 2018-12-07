@@ -17,9 +17,9 @@ void ShaMC::fit(SharedDataset &X) {
     int support = X.getSupport();
 
     // per-mediod datastructures
-    std::vector<std::stringstream *> mediod_frequent_items;
-    std::vector<std::stringstream *> mediod_transactions;
-    std::vector<Info *> sharedInfos;
+    std::stringstream * mediod_frequent_items;
+    std::stringstream * mediod_transactions;
+    Info * sharedInfo;
 
     start = omp_get_wtime();
     int i;
@@ -34,16 +34,6 @@ void ShaMC::fit(SharedDataset &X) {
         clusterCount = currentSize <= parameters.mediods ? currentSize : parameters.mediods;
         mediods = X.pickMediodsRandom(clusterCount);
 
-
-
-        //int inner_threads = parameters.nThreads > mediods.size() ? parameters.nThreads / mediods.size() : 1;
-        // resize per-mediod data structures to match number of mediods
-        mediod_transactions.resize(mediods.size());
-        mediod_frequent_items.resize(mediods.size());
-        sharedInfos.resize(mediods.size());
-        //X.repartition(inner_threads);
-
-//#pragma omp parallel for schedule(static) shared(mediod_transactions, mediod_frequent_items, sharedInfos) private(me)
         DimensionSet bestSubspace;
         DimensionSet tempset;
         for (int k = 0; k < mediods.size(); k++) {
@@ -55,9 +45,9 @@ void ShaMC::fit(SharedDataset &X) {
                 me = omp_get_thread_num();
 
                 if (me == 0) {
-                    mediod_transactions[k] = new std::stringstream;
-                    mediod_frequent_items[k] = new std::stringstream;
-                    sharedInfos[k] = new Info; // allocate here, not needed until later
+                    mediod_transactions = new std::stringstream;
+                    mediod_frequent_items = new std::stringstream;
+                    sharedInfo = new Info; // allocate here, not needed until later
                 }
 
                 // each transaction object only has half of the transactions for a mediod
@@ -67,28 +57,28 @@ void ShaMC::fit(SharedDataset &X) {
                 // total for that mediod
 #pragma omp barrier
 #pragma omp critical
-                *mediod_transactions[k] << transactions.getTransactions()->str();
-
+                *mediod_transactions << transactions.getTransactions()->str();
 
                 ParFPM pfpm;
                 auto myInput = new std::stringstream;
 #pragma omp barrier
-                myInput->str(mediod_transactions[k]->str());
-                pfpm.Mine_Patterns(myInput, mediod_frequent_items[k], support, 128, 1, sharedInfos[k]);
-                delete myInput;
+                myInput->str(mediod_transactions->str());
+                pfpm.Mine_Patterns(myInput, mediod_frequent_items, support, 128, 1, sharedInfo);
 #pragma omp barrier
+                delete myInput;
 
                 if (omp_get_thread_num() == 0) {
-                    tempset = subspace.buildSubspace(mediod_frequent_items[k], mediod->first);
+                    //std::cout << mediod_frequent_items->str() << std::endl;
+                    tempset = subspace.buildSubspace(mediod_frequent_items, mediod->first);
 
                     // update best subspace
                     if (subspace.compareSubspaces(tempset, bestSubspace))
                         bestSubspace = tempset;
 
                     // delete stringstream pointers (clearing them doesn't seem to work)
-                    delete mediod_transactions[k];
-                    delete mediod_frequent_items[k];
-                    delete sharedInfos[k];
+                    delete mediod_transactions;
+                    delete mediod_frequent_items;
+                    delete sharedInfo;
                 }
             }
         }
@@ -96,9 +86,9 @@ void ShaMC::fit(SharedDataset &X) {
         if (bestSubspace.mu == 0) {
             failedAttempts++;
             continue; // retry
-        } else {
-            failedAttempts = 0;
         }
+
+        failedAttempts = 0;
 
 #pragma omp parallel private(me)
         {
