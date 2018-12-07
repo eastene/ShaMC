@@ -12,7 +12,7 @@
 struct SharedSettings{
     double width = 2.5;
     double alpha = 0.1;
-    double beta = 0.25;
+    double beta = 0.5;
     int mediods = 4;//1 * (int)ceil(2 / alpha);
     int maxAttempts = 2;
     uint32_t maxiter = 1000;

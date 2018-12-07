@@ -44,38 +44,35 @@ void ShaMC::fit(SharedDataset &X) {
         sharedInfos.resize(mediods.size());
         X.repartition(inner_threads);
 
-#pragma omp parallel for schedule(static) shared(mediod_transactions, mediod_frequent_items, sharedInfos) private(me)
-        for (int k = 0; k < mediods.size() * inner_threads; k++){
-            int m = k / inner_threads;
-            SharedTransactions transactions(1);
-            auto mediod = mediods.begin();
-            std::advance(mediod, m);
-            me = omp_get_thread_num() % inner_threads;
-            mediod_tot_points[m] = 0;
-
-            if (me == 0) {
-                mediod_transactions[m] = new std::stringstream;
-                mediod_frequent_items[m] = new std::stringstream;
-                sharedInfos[m] = new Info; // allocate here, not needed until later
-            }
-
-            // each transaction object only has half of the transactions for a mediod
-            transactions.buildTransactionsPar(mediod->first, X, me);
-
-            // once each thread has finished counting transactions, add them all to the respective
-            // total for that mediod
-#pragma omp critical
-            *mediod_transactions[m] << transactions.getTransactions()->str();
-        }
-
+//#pragma omp parallel for schedule(static) shared(mediod_transactions, mediod_frequent_items, sharedInfos) private(me)
         DimensionSet tempset;
         for (int k = 0; k < mediods.size(); k++) {
-#pragma omp parallel private(me)
+#pragma omp parallel
             {
+                SharedTransactions transactions(1);
                 auto mediod = mediods.begin();
                 std::advance(mediod, k);
+                me = omp_get_thread_num();
+
+                if (me == 0) {
+                    mediod_transactions[k] = new std::stringstream;
+                    mediod_frequent_items[k] = new std::stringstream;
+                    sharedInfos[k] = new Info; // allocate here, not needed until later
+                }
+
+                // each transaction object only has half of the transactions for a mediod
+                transactions.buildTransactionsPar(mediod->first, X, me);
+
+                // once each thread has finished counting transactions, add them all to the respective
+                // total for that mediod
+#pragma omp barrier
+#pragma omp critical
+                *mediod_transactions[k] << transactions.getTransactions()->str();
+
+
                 ParFPM pfpm;
                 auto myInput = new std::stringstream;
+#pragma omp barrier
                 myInput->str(mediod_transactions[k]->str());
                 pfpm.Mine_Patterns(myInput, mediod_frequent_items[k], support, 128, 1, sharedInfos[k]);
                 delete myInput;
@@ -95,10 +92,10 @@ void ShaMC::fit(SharedDataset &X) {
             }
         }
 
-        if (bestSubspace.mu == 0){
+        if (bestSubspace.mu == 0) {
             failedAttempts++;
             continue; // retry
-        } else{
+        } else {
             failedAttempts = 0;
         }
 
@@ -116,6 +113,8 @@ void ShaMC::fit(SharedDataset &X) {
         std::cout << "New cluster " << num_clusts++ << " found" << std::endl;
         std::cout << "  Points: " << bestSubspace.numPoints << std::endl;
         std::cout << "  Dimensions: " << bestSubspace.itemset.size() << std::endl;
+
+
     }
 
     if (failedAttempts >= parameters.maxAttempts) {

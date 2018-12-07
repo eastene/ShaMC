@@ -76,6 +76,8 @@ public:
 
     std::pair<RowIndex, int> shape() { return _shape; }
 
+    void maskRow(RowIndex index);  // masks row so that it will not be used in future computations
+
     Row* getRow(RowIndex index);
 
     Row* getRowAsynch(RowIndex index);

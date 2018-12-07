@@ -48,12 +48,12 @@ SharedDataset::SharedDataset(SharedSettings &parameters) {
     datastream.close();
     readRows();
 
-    this->rowsPerThread = this->row2byte.size() / this->num_threads;
-    this->extraRows = this->row2byte.size() % this->num_threads;
+    this->rowsPerThread = this->num_threads > 0 ? this->inMemBuffer.size() / this->num_threads : this->inMemBuffer.size();
+    this->extraRows = this->num_threads > 0 ? this->inMemBuffer.size() % this->num_threads : 0;
     for (int p = 0; p < this->num_threads - 1; p++)
-        this->partitions.emplace_back(std::make_pair(this->rowsPerThread * p, this->rowsPerThread * (p + 1)));
+        this->partitions.emplace_back(std::make_pair(this->rowsPerThread * p, this->rowsPerThread * (p + 1) - 1));
 
-    this->partitions.emplace_back(std::make_pair(this->rowsPerThread * (this->num_threads - 1), this->row2byte.size() - 1));
+    this->partitions.emplace_back(std::make_pair(this->rowsPerThread * (this->num_threads - 1), this->inMemBuffer.size() - 1));
 
     this->_shape = std::make_pair(this->row2byte.size(), this->header.size());
 }
@@ -130,6 +130,10 @@ bool SharedDataset::to_csv() {
 
     out.close();
     return true;
+}
+
+void SharedDataset::maskRow(RowIndex index) {
+
 }
 
 Row *SharedDataset::getRow(RowIndex index) {
@@ -228,15 +232,16 @@ void SharedDataset::printSummaryStats() {
 void SharedDataset::repartition(uint16_t nThreads) {
     if (this->num_threads == nThreads)
         return;
+
     this->num_threads = nThreads;
     this->parameters.nThreads = nThreads;
     this->partitions.clear();
 
-    this->rowsPerThread = this->num_threads > 0 ? this->row2byte.size() / this->num_threads : this->row2byte.size();
-    this->extraRows = this->num_threads > 0 ? this->row2byte.size() % this->num_threads : 0;
+    this->rowsPerThread = this->num_threads > 0 ? this->inMemBuffer.size() / this->num_threads : this->inMemBuffer.size();
+    this->extraRows = this->num_threads > 0 ? this->inMemBuffer.size() % this->num_threads : 0;
     for (int p = 0; p < this->num_threads - 1; p++)
         this->partitions.emplace_back(std::make_pair(this->rowsPerThread * p, this->rowsPerThread * (p + 1) - 1));
 
-    this->partitions.emplace_back(std::make_pair(this->rowsPerThread * (this->num_threads - 1), this->row2byte.size() - 1));
+    this->partitions.emplace_back(std::make_pair(this->rowsPerThread * (this->num_threads - 1), this->inMemBuffer.size() - 1));
 
 }
