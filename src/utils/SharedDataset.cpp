@@ -232,12 +232,12 @@ void SharedDataset::printSummaryStats() {
     std::cout << "*************   Summary   *************" << std::endl;
     std::cout << "///////////////////////////////////////" << std::endl;
 
-    if (clusters.empty()){
+    if (clusters.size() == 1 && clusters.find(-1) != clusters.end()){
         std::cout << "No clusters found!" << std::endl;
         return;
     }
 
-    std::cout << "Number of clusters found: " << clusters.size() << std::endl;
+    std::cout << "Number of clusters found: " << clusters.size() - 1 << std::endl;
     int i = 0;
     for (auto &clus : clusters) {
         if (clus.first != -1)

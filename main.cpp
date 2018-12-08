@@ -4,19 +4,24 @@
 #include "headers/utils/SharedSettings.hpp"
 #include "headers/cluster/ShaMC.hpp"
 
-int main() {
+int main(int argc, char** argv) {
 
-    int num_threads = 2;
+    if (argc < 4) {
+        std::cout << "usage: ./ShaMC num_threads input_path output_path" << std::endl;
+    }
+
+    int num_threads = std::stoi(argv[1]);
 
     omp_set_num_threads(num_threads);
 
-    std::string path = "/home/evan/CLionProjects/ShaMC/data/synthetic_5_100_1000.csv";
     SharedSettings ss;
     ss.nThreads = num_threads;
     ss.width = 20;
+    ss.alpha = 0.1;
+    ss.beta = 0.25;
     ss.maxiter = 1000;
-    ss.dataPath = path;
-    ss.resultPath = "/home/evan/CLionProjects/ShaMC/data/synthetic_5_100_1000_clus.csv";
+    ss.dataPath = argv[2];
+    ss.resultPath = argv[3];
 
     SharedDataset X(ss);
     X.printMetaInfo();
@@ -24,5 +29,6 @@ int main() {
     ShaMC mc(ss);
     mc.fit(X);
     X.to_csv();
+
     return 0;
 }
