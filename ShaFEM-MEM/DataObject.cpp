@@ -31,7 +31,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 
 //#pragma once
-#include "../../headers/ShaFEM/DataObject.h"
+#include "DataObject.h"
 #include <stdlib.h>  
 #include <cstring>
 #include <stdio.h>
@@ -123,7 +123,7 @@ void quicksort_descending(T *A,int lo, int hi)
 }
 /*
 //------------------------------------------------
-//sort itemset in the head list by the descending order of count
+//sort item in the head list by the descending order of count
 void quicksort_head1(Head* A,int* index, int lo, int hi,bool &isSort)
 {
 	int tmp;
@@ -154,7 +154,7 @@ void quicksort_head1(Head* A,int* index, int lo, int hi,bool &isSort)
 }
 */
 //------------------------------------------------
-//sort itemset in the head list by the descending order of count
+//sort item in the head list by the descending order of count
 void quicksort_item(Item* A, int lo, int hi)
 {
 	int i=lo;
@@ -229,7 +229,7 @@ void List<T>::resize()
 	items = temp;
 }
 
-//add an itemset to list
+//add an item to list
 template <class T>
 void List<T>::add(T item)
 {
@@ -306,7 +306,7 @@ char* IntToString::convertCount(int count, int& length)
 //--------------------------------------------------------------------------
 //Transactions are used to store the indices of all frequent items of each 
 //original transactions. Each index is used for fast access the appropriate 
-//itemset in the head list
+//item in the head list
 Transaction::Transaction() { items = 0 ; size = maxsize = 0; count = 1;}
 
 void Transaction::sort() { ascendingsort(items,size); }
@@ -403,7 +403,7 @@ Countlist::Countlist()
 	for(int i=0; i<COUNT_SIZE; i++) counts[i] = 0;
 }
 
-//resize the list so that it can store the count of itemset
+//resize the list so that it can store the count of item
 void Countlist::resize(int newsize)
 {
 	int* temp = new int[newsize];
@@ -420,12 +420,12 @@ void Countlist::resize(int newsize)
 	counts = temp;
 }
 
-//increase the count of itemset into 1
+//increase the count of item into 1
 void Countlist::count(int item)
 {
 	if(item >= size)
 	{
-		//if this itemset /is beyounce the max lenght of current count list
+		//if this item /is beyounce the max lenght of current count list
 		if(item >= maxsize)	resize(2*item);
 		
 		size = item + 1;
@@ -433,7 +433,7 @@ void Countlist::count(int item)
 	counts[item]++;
 }
 
-//get number of itemset that has count > threshold
+//get number of item that has count > threshold
 int Countlist::getItemCount(int threshold)
 {
 	int sum = 0;

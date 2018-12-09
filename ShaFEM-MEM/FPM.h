@@ -1,5 +1,5 @@
 /*
-   Author:  Lan Vu
+   Author:  Lan Vu  
 
 Copyright (c) 2017, University of Colorado Denver All rights reserved.
 
@@ -29,19 +29,11 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 */
 
-
-/*
- *
- * This code has been modified from the original source written by Lan Vu.
- * It has been changed to work with in-memory transactions from the
- * subspace clustering algorithm, but performs FPGrowth in the same
- * manner as described in the original code.
- *
- */
-
-#ifndef SHAMC_FPM_MODIFIED_HPP
-#define SHAMC_FPM_MODIFIED_HPP
-
+#include <memory>
+#include "buffer.h"
+#include "DataObject.h"
+#include "InputData.h"
+#include "OutputData.h"
 
 #define MAX_ARRAY_SIZE 16*124*1024
 #define K_STEP 32
@@ -50,13 +42,9 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #define LOOKUP_TABLE_SIZE 256
 #define MAX_NUM_THREAD 128
 
-#include <cstring>
-#include <iostream>
-#include "buffer.h"
-#include "../utils/ProcessTransactions.hpp"
-#include "../utils/SharedSubspace.hpp"
+class FPM;
 
-class FPM_modified;
+void BuildTidSizeLookupTable(int *oneCount, int *onePos);
 
 struct Info {
     int *globalcount;
@@ -65,24 +53,34 @@ struct Info {
     int totalitemsets;
     int maxitems;
     int currentthread;
-    FPM_modified *pfpm[MAX_NUM_THREAD];    // adjust the array if want more current thread
-    SharedSubspace *subspace;
+//	FPM** pfpm; 
+    FPM *pfpm[MAX_NUM_THREAD];    //addjust the array if want more current thread
+    OutputData *out;
 
     Info() {
         totaltrans = totalcount = totalitemsets = maxitems = currentthread = 0;
-        globalcount = nullptr;
-        //pfpm = nullptr;
-        subspace = nullptr;
+        globalcount = 0;
+        //pfpm = 0;
+        out = 0;
     }
+
+    /* should not have this function, destroy should be invoked by the one that initialized
+    ~Info()
+    {
+        if (out) delete  out;
+        if (globalcount) delete[] globalcount;
+    }
+    */
 };
 
-class FPM_modified {
-private:
+
+class FPM {
+public:
     Head *heads; //list of head nodes
     Node *root; //list of nodes
     int *twoset; //array with 2-lenght itemset frequence
     int itemno;
-    int avglength;
+    int avglenght;
     bool istwoset;
     memory *fp_buf;
     int *tmpbuf;
@@ -91,35 +89,72 @@ private:
     int *onePos;
     int thres_k;
 
-public:
-    FPM_modified() = default;
 
     void Initilize(int ItemCount, int AverageLenght, int *OneCountArray, int *OnePosArray);
+
+    void Destroy();
 
     bool Create(int ItemCount, int AverageLenght, memory *MemoryBuffer, int *TempBuffer, int *OneCountArray,
                 int *OnePosArray, unsigned int *PatternsArray);
 
     void Grow(int *t, int size, int count, bool order = true);
 
-    int Build_FP_Tree(ProcessTransactions &data);
+    void FP_Tree_Mining(int minsup, OutputData *outfile, int size = 1, int threadid = 0, int threadnum = 1);
+
+    void DFP_Tree_Mining(int minsup, OutputData *outfile, int size = 1, int threadid = 0, int threadnum = 1);
+
+    void DFP_Tree_Mining_Parallel(int minsup, OutputData *outfile, int size, int threadid, int threadnum = 1);
+
+    void LFP_Tree_Mining(int minsup, OutputData *outfile, int size = 1, unsigned int *pPatterns = 0, int threadid = 0,
+                         int threadnum = 1);
+
+    void TID_Bit_Vector_Mining(Item *items, int itemcount, int *trans, int tidsize, int minsup, OutputData *outfile,
+                               int size, int *sameitems, int sameitemscount);
 
     void UpdateK(int NewPatternNum, int DBSize);
 
-    int GetCount(const int *trans, TID_DATA tid);
+    void UpdateK_localthreshold(int NewPatternNum, int DBSize, int &k_value, unsigned int *pattern);
 
     int Intersect(const Item x, const Item y, Item &xy, int *trans, int size);
 
-    void DFP_Tree_Mining(int minsup, SharedSubspace *subspace, int size = 1, int threadid = 0, int threadnum = 1);
+    int GetCount(const int *trans, TID_DATA tid);
 
-    void DFP_Tree_Mining_Parallel(int minsup, SharedSubspace *subspace, int size, int threadid, int threadnum = 1);
+    bool CreateHeaderTable(InputData *indata, int minsup);
 
+    int Build_FP_Tree(InputData *data);
+
+    void Build_FP_Tree_Parallel(InputData *indata, int minsup);
+
+    void Mine_Patterns(std::shared_ptr<std::stringstream> in, std::shared_ptr<std::stringstream> out, int minsup,
+                       int thres_K, int methods);
+
+    void MergeOutput(char *ScrFileName, char *DesFileName);
 
     void
-    TID_Bit_Vector_Mining(Item *items, int itemcount, int *trans, int tidsize, int minsup, SharedSubspace *subspace,
-                          int size, int *sameitems, int sameitemscount);
+    Mine_Patterns_Parallel(std::stringstream* in, std::stringstream* out, int minsup,
+                           int thres_K, int methods, Info *info); // added function
 
-    SharedSubspace* Mine_Patterns_Parallel(ProcessTransactions &pt, int minsup, int thres_K, Info *info,  SharedSettings &params);
+    void MergeOutput(char *DesFileName);
+
+    FPM() {
+        heads = 0;
+        root = 0;
+        twoset = 0;
+    }
+
+    ~FPM();
+
+    void FEM(char *infile, char *outfile, int minsup, int thres_K);
+
+    void DFEM(std::stringstream* in, std::stringstream*out, int minsup);
+
+    void LFEM(char *infile, char *outfile, int minsup);
+
 };
 
+class ParFPM {
 
-#endif //SHAMC_FPM_MODIFIED_HPP
+public:
+    void Mine_Patterns(std::stringstream* in,std::stringstream* out, int minsup,
+                       int thres_K, int methods, Info *info); // added function
+};

@@ -12,9 +12,9 @@
 #include "../utils/SharedDataset.hpp"
 #include "../utils/SharedSettings.hpp"
 #include "../../headers/utils/logger.h"
-#include "../../headers/ShaFEM/FPM_modified.hpp"
-#include "../../headers/utils/ProcessTransactions.hpp"
-
+#include "../../ShaFEM-MEM/FPM.h"
+#include "../utils/SharedTransactions.hpp"
+#include "../../headers/utils/SharedSubspace.hpp"
 
 class ShaMC {
 private:

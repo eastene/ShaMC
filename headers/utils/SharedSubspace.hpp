@@ -9,37 +9,31 @@
 #include <cstdint>
 #include <vector>
 #include <set>
-#include "ProcessTransactions.hpp"
-
-typedef int Count;
+#include "SharedTransactions.hpp"
 
 struct DimensionSet {
-    std::string itemset;
-    std::string count;
-    Count size;
+    RowIndex mediodID;
+    std::vector<int> itemset;
+    int count = 0;
+    double mu = 0;
+    uint64_t numPoints = 0;
 };
 
 class SharedSubspace {
 private:
-    Count _itemNumber;
-    Count _minSupport;
     SharedSettings _parameters;
-    IntToString* _lookup;
 
-    std::vector<DimensionSet *> _items;
 public:
 
-    SharedSubspace(Count minSupport, Count itemNumber, SharedSettings &parameters) : _minSupport{minSupport},
-                                                                                    _itemNumber{itemNumber},
-                                                                                    _parameters{parameters} {_lookup = new IntToString(_parameters.minsupport);}
+    explicit SharedSubspace(SharedSettings &parameters):_parameters{parameters}{};
 
-    void addDimensionSet(int item, int count, int size);
+    DimensionSet buildSubspace(std::stringstream *dimensionSet, RowIndex mediodID);
 
-    void addDimensionSet(int *items, int length, int level, int count, int size);
+    uint64_t clusterPar(SharedDataset &X, PartitionID me, int clusterNum, DimensionSet &subspace);
 
-    const Count getSetCount() { return _items.size(); }
+    bool compareSubspaces(DimensionSet &subspace1, DimensionSet &subspace2);
 
-    const std::vector<DimensionSet *> getSubspaces() { return _items; }
+    void printCentroid(DimensionSet centroid);
 };
 
 

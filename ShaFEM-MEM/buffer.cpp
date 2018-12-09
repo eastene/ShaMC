@@ -34,7 +34,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "../../headers/ShaFEM/buffer.h"
+#include "buffer.h"
 //#include "common.h"
 //#include <malloc.h>
 

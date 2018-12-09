@@ -10,8 +10,8 @@
 #include <cmath>
 
 struct SharedSettings{
-    double width = 2.5;
-    double alpha = 0.5;
+    double width = 20;
+    double alpha = 0.1;
     double beta = 0.25;
     int mediods = 1 * (int)ceil(2 / alpha);
     int maxAttempts = 2;
