@@ -7,7 +7,7 @@
 int main(int argc, char** argv) {
 
     if (argc < 4) {
-        std::cout << "usage: ./ShaMC num_threads input_path output_path" << std::endl;
+        std::cout << "usage: ./ShaMC num_threads input_path output_path [width] [alpha] [beta]" << std::endl;
     }
 
     int num_threads = std::stoi(argv[1]);
@@ -16,9 +16,9 @@ int main(int argc, char** argv) {
 
     SharedSettings ss;
     ss.nThreads = num_threads;
-    ss.width = 20;
-    ss.alpha = 0.1;
-    ss.beta = 0.25;
+    ss.width = argc == 5 ? std::stoi(argv[4]) : 30;
+    ss.alpha = argc == 6 ? std::stoi(argv[5]) : 0.1;
+    ss.beta = argc == 7 ? std::stoi(argv[6]) : 0.25;
     ss.maxiter = 1000;
     ss.dataPath = argv[2];
     ss.resultPath = argv[3];

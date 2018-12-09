@@ -120,5 +120,5 @@ void ShaMC::fit(SharedDataset &X) {
     end = omp_get_wtime();
     X.printSummaryStats();
 
-    std::cout << "Total Elapsed time: " << (end - start) << "s";
+    std::cout << "Total Elapsed time: " << (end - start) << "s" << std::endl;
 }
