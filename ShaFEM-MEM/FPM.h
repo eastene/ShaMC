@@ -56,6 +56,7 @@ struct Info {
 //	FPM** pfpm; 
     FPM *pfpm[MAX_NUM_THREAD];    //addjust the array if want more current thread
     OutputData *out;
+    double mu_best;
 
     Info() {
         totaltrans = totalcount = totalitemsets = maxitems = currentthread = 0;
@@ -99,17 +100,17 @@ public:
 
     void Grow(int *t, int size, int count, bool order = true);
 
-    void FP_Tree_Mining(int minsup, OutputData *outfile, int size = 1, int threadid = 0, int threadnum = 1);
+    void FP_Tree_Mining(int minsup, OutputData *outfile, int size = 1, int threadid = 0, int threadnum = 1, double* mu_best=NULL);
 
-    void DFP_Tree_Mining(int minsup, OutputData *outfile, int size = 1, int threadid = 0, int threadnum = 1);
+    void DFP_Tree_Mining(int minsup, OutputData *outfile, int size = 1, int threadid = 0, int threadnum = 1, double* mu_best=NULL);
 
-    void DFP_Tree_Mining_Parallel(int minsup, OutputData *outfile, int size, int threadid, int threadnum = 1);
+    void DFP_Tree_Mining_Parallel(int minsup, OutputData *outfile, int size, int threadid, int threadnum = 1, double* mu_best=NULL);
 
     void LFP_Tree_Mining(int minsup, OutputData *outfile, int size = 1, unsigned int *pPatterns = 0, int threadid = 0,
-                         int threadnum = 1);
+                         int threadnum = 1, double* mu_best=NULL);
 
     void TID_Bit_Vector_Mining(Item *items, int itemcount, int *trans, int tidsize, int minsup, OutputData *outfile,
-                               int size, int *sameitems, int sameitemscount);
+                               int size, int *sameitems, int sameitemscount, double* mu_best=NULL);
 
     void UpdateK(int NewPatternNum, int DBSize);
 

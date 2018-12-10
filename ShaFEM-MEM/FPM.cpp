@@ -168,7 +168,7 @@ void FPM::Grow(int *t, int size, int count, bool order) {
 }
 
 //--------------------------------------------------------------------------
-void FPM::FP_Tree_Mining(int minsup, OutputData *outfile, int size, int threadid, int threadnum) {
+void FPM::FP_Tree_Mining(int minsup, OutputData *outfile, int size, int threadid, int threadnum, double* mu_best) {
     //for each head list, create a project tree and find the frequent item
     for (int i = 0; i < itemno; i++) {
         //this items is not be mined , used in case of parallel
@@ -187,7 +187,7 @@ void FPM::FP_Tree_Mining(int minsup, OutputData *outfile, int size, int threadid
             if (node->parent && outfile) {
                 int j = 0;
                 for (n = node->parent; n; n = n->parent) tmpbuf[j++] = heads[n->id].id;
-                outfile->write(tmpbuf, j, 0, head->count, size + 1);
+                outfile->write(tmpbuf, j, 0, head->count, size + 1, mu_best);
             }
             continue;
         }
@@ -256,7 +256,7 @@ void FPM::FP_Tree_Mining(int minsup, OutputData *outfile, int size, int threadid
                     }
                 }
 
-                TID_Bit_Vector_Mining(items, itemcount, trans, tcount, minsup, outfile, size + 1, sameitems, 0);
+                TID_Bit_Vector_Mining(items, itemcount, trans, tcount, minsup, outfile, size + 1, sameitems, 0, mu_best);
 //				TIDListRuntime += ( clock()/(float)CLOCKS_PER_SEC - runtime);
                 fp_buf->freebuf(MR, MC, MB);
             } else {
@@ -308,7 +308,7 @@ void FPM::UpdateK(int NewPatternNum, int DBSize) {
 }
 
 
-void FPM::DFP_Tree_Mining_Parallel(int minsup, OutputData *outfile, int size, int threadid, int threadnum) {
+void FPM::DFP_Tree_Mining_Parallel(int minsup, OutputData *outfile, int size, int threadid, int threadnum, double* mu_best) {
 
     //for each head list, create a project tree and find the frequent item
     //#pragma omp for schedule (dynamic)
@@ -330,7 +330,7 @@ void FPM::DFP_Tree_Mining_Parallel(int minsup, OutputData *outfile, int size, in
                 int oldset = outfile->setcount;
                 int j = 0;
                 for (n = node->parent; n; n = n->parent) tmpbuf[j++] = heads[n->id].id;
-                outfile->write(tmpbuf, j, 0, head->count, size + 1);
+                outfile->write(tmpbuf, j, 0, head->count, size + 1, mu_best);
                 UpdateK(outfile->setcount - oldset, 1);
             }
 
@@ -400,7 +400,7 @@ void FPM::DFP_Tree_Mining_Parallel(int minsup, OutputData *outfile, int size, in
                             }
                         }
                     }
-                    TID_Bit_Vector_Mining(items, itemcount, trans, tcount, minsup, outfile, size + 1, sameitems, 0);
+                    TID_Bit_Vector_Mining(items, itemcount, trans, tcount, minsup, outfile, size + 1, sameitems, 0, mu_best);
                     //TIDListRuntime += ( clock()/(float)CLOCKS_PER_SEC - runtime);
                     fp_buf->freebuf(MR, MC, MB);
                 } else {
@@ -425,7 +425,7 @@ void FPM::DFP_Tree_Mining_Parallel(int minsup, OutputData *outfile, int size, in
 
 
                     //then mine it
-                    ctree->DFP_Tree_Mining(minsup, outfile, size + 1, threadid, threadnum);
+                    ctree->DFP_Tree_Mining(minsup, outfile, size + 1, threadid, threadnum, mu_best);
 
                     fp_buf->freebuf(MR, MC, MB);
                 }
@@ -438,7 +438,7 @@ void FPM::DFP_Tree_Mining_Parallel(int minsup, OutputData *outfile, int size, in
 }
 
 
-void FPM::DFP_Tree_Mining(int minsup, OutputData *outfile, int size, int threadid, int threadnum) {
+void FPM::DFP_Tree_Mining(int minsup, OutputData *outfile, int size, int threadid, int threadnum, double* mu_best) {
     //for each head list, create a project tree and find the frequent item
     for (int i = 0; i < itemno; i++) {
         //this items is not be mined , used in case of parallel
@@ -458,7 +458,7 @@ void FPM::DFP_Tree_Mining(int minsup, OutputData *outfile, int size, int threadi
                 int oldset = outfile->setcount;
                 int j = 0;
                 for (n = node->parent; n; n = n->parent) tmpbuf[j++] = heads[n->id].id;
-                outfile->write(tmpbuf, j, 0, head->count, size + 1);
+                outfile->write(tmpbuf, j, 0, head->count, size + 1, mu_best);
                 UpdateK(outfile->setcount - oldset, 1);
             }
             continue;
@@ -527,7 +527,7 @@ void FPM::DFP_Tree_Mining(int minsup, OutputData *outfile, int size, int threadi
                         }
                     }
                 }
-                TID_Bit_Vector_Mining(items, itemcount, trans, tcount, minsup, outfile, size + 1, sameitems, 0);
+                TID_Bit_Vector_Mining(items, itemcount, trans, tcount, minsup, outfile, size + 1, sameitems, 0, mu_best);
                 //TIDListRuntime += ( clock()/(float)CLOCKS_PER_SEC - runtime);
                 fp_buf->freebuf(MR, MC, MB);
             } else {
@@ -551,7 +551,7 @@ void FPM::DFP_Tree_Mining(int minsup, OutputData *outfile, int size, int threadi
                 }
 
                 //then mine it
-                ctree->DFP_Tree_Mining(minsup, outfile, size + 1, threadid, threadnum);
+                ctree->DFP_Tree_Mining(minsup, outfile, size + 1, threadid, threadnum, mu_best);
                 fp_buf->freebuf(MR, MC, MB);
             }
         } else if (itemcount == 1 && outfile) {
@@ -580,7 +580,7 @@ void FPM::UpdateK_localthreshold(int NewPatternNum, int DBSize, int &k_value, un
 }
 
 void
-FPM::LFP_Tree_Mining(int minsup, OutputData *outfile, int size, unsigned int *pPatterns, int threadid, int threadnum) {
+FPM::LFP_Tree_Mining(int minsup, OutputData *outfile, int size, unsigned int *pPatterns, int threadid, int threadnum, double* mu_best) {
     int k_value = 0;
     unsigned int patterns[K_LEVEL];
     memset(patterns, 0, sizeof(int) * K_LEVEL);
@@ -606,7 +606,7 @@ FPM::LFP_Tree_Mining(int minsup, OutputData *outfile, int size, unsigned int *pP
                 int oldset = outfile->setcount;
                 int j = 0;
                 for (n = node->parent; n; n = n->parent) tmpbuf[j++] = heads[n->id].id;
-                outfile->write(tmpbuf, j, 0, head->count, size + 1);
+                outfile->write(tmpbuf, j, 0, head->count, size + 1, mu_best);
                 UpdateK_localthreshold(outfile->setcount - oldset, 1, k_value, patterns);
             }
             continue;
@@ -683,7 +683,7 @@ FPM::LFP_Tree_Mining(int minsup, OutputData *outfile, int size, unsigned int *pP
                     }
                 }
 
-                TID_Bit_Vector_Mining(items, itemcount, trans, tcount, minsup, outfile, size + 1, sameitems, 0);
+                TID_Bit_Vector_Mining(items, itemcount, trans, tcount, minsup, outfile, size + 1, sameitems, 0, mu_best);
                 //TIDListRuntime += ( clock()/(float)CLOCKS_PER_SEC - runtime);
                 fp_buf->freebuf(MR, MC, MB);
             } else {
@@ -745,7 +745,7 @@ int FPM::Intersect(const Item x, const Item y, Item &xy, int *trans, int size) {
 //similar to mine 9 but all similar vector are merge like 13
 //---------------------------------------------------------------------------------
 void FPM::TID_Bit_Vector_Mining(Item *items, int itemcount, int *trans, int tidsize, int minsup, OutputData *outfile,
-                                int size, int *sameitems, int sameitemscount) {
+                                int size, int *sameitems, int sameitemscount, double* mu_best) {
     int count, pos, newsameitemscount, MC;
     unsigned int MR;
     char *MB;
@@ -756,7 +756,7 @@ void FPM::TID_Bit_Vector_Mining(Item *items, int itemcount, int *trans, int tids
 
     if (outfile) {
         outfile->write(items[0].id, items[0].count, size);
-        if (sameitemscount) outfile->write(sameitems, sameitemscount, 0, items[0].count, size + 1);
+        if (sameitemscount) outfile->write(sameitems, sameitemscount, 0, items[0].count, size + 1, mu_best);
     }
 
     for (int i = 1; i < itemcount; i++) {
@@ -782,11 +782,11 @@ void FPM::TID_Bit_Vector_Mining(Item *items, int itemcount, int *trans, int tids
         if (outfile) {
             outfile->write(items[i].id, items[i].count, size);
             if (sameitemscount || newsameitemscount)
-                outfile->write(sameitems, sameitemscount + newsameitemscount, 0, items[i].count, size + 1);
+                outfile->write(sameitems, sameitemscount + newsameitemscount, 0, items[i].count, size + 1, mu_best);
         }
         if (count)
             TID_Bit_Vector_Mining(itemset, count, trans, tidsize, minsup, outfile, size + 1, sameitems,
-                                  sameitemscount + newsameitemscount);
+                                  sameitemscount + newsameitemscount, mu_best);
         fp_buf->freebuf(MR, MC, MB);
     }
 }
@@ -1005,7 +1005,7 @@ void FPM::Mine_Patterns_Parallel(std::stringstream *in, std::stringstream *out, 
             break;
         case 1:
             UpdateK(itemno, K_LEVEL * K_STEP);
-            DFP_Tree_Mining_Parallel(minsup, outdata, 1, threadid, threadnum);
+            DFP_Tree_Mining_Parallel(minsup, outdata, 1, threadid, threadnum, &info->mu_best);
             break;
         case 2:
 //				LFP_Tree_Mining(minsup,outdata,1,0,threadid,threadnum);

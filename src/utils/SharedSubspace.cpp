@@ -5,6 +5,7 @@
 #include <iostream>
 #include "../../headers/utils/SharedSubspace.hpp"
 
+
 DimensionSet SharedSubspace::buildSubspace(std::stringstream *dimensionSet, RowIndex mediodID) {
     std::string line;
     std::string token;

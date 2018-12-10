@@ -36,6 +36,7 @@ void ShaMC::fit(SharedDataset &X) {
 
         DimensionSet bestSubspace;
         DimensionSet tempset;
+        double best_mu = 0.0;
         for (int k = 0; k < mediods.size(); k++) {
 #pragma omp parallel private(me)
             {
@@ -48,6 +49,7 @@ void ShaMC::fit(SharedDataset &X) {
                     mediod_transactions = new std::stringstream;
                     mediod_frequent_items = new std::stringstream;
                     sharedInfo = new Info; // allocate here, not needed until later
+                    sharedInfo->mu_best = best_mu;
                 }
 
                 // each transaction object only has half of the transactions for a mediod
@@ -70,7 +72,6 @@ void ShaMC::fit(SharedDataset &X) {
                 if (omp_get_thread_num() == 0) {
                     //std::cout << mediod_frequent_items->str() << std::endl;
                     tempset = subspace.buildSubspace(mediod_frequent_items, mediod->first);
-
                     // update best subspace
                     if (subspace.compareSubspaces(tempset, bestSubspace))
                         bestSubspace = tempset;

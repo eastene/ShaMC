@@ -36,6 +36,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #include <omp.h>
 #include <iostream>
+#include <cmath>
 
 //----------------------------------------------------------------------------------------------
 OutputData::OutputData(std::stringstream* out,int minsup, int itemcount)
@@ -183,13 +184,24 @@ void OutputData::write(int item, int count, int size)
 //----------------------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------------------
-void OutputData::write(int *items,int lenght,int level, int count,int size)
+void OutputData::write(int *items,int lenght,int level, int count,int size, double *mu_best)
 {
+	bool toRet = true;
+#pragma critical
+	{
+		if (count * pow((1 / 0.25), size) > *mu_best) {
+			*mu_best = count * pow((1 / 0.25), size);
+			toRet = false;
+		}
+	}
+
+	if (toRet) return; // skip adding itemset if not better than previously mined sets
+
 	do
 	{
 		write(items[level++],count,size);
 
-		if (level < lenght ) write(items,lenght,level,count,size+1);
+		if (level < lenght ) write(items,lenght,level,count,size+1, mu_best); // TODO: make sure this works
 		else break;
 	
 	}while(1);
