@@ -3,8 +3,10 @@ Shared-memory MIMD MineClus for subspace clustering on high dimensional
 datasets.
 
 <h4>Usage</h4>
+
 `./ShaMC num_threads input output [width] [alpha] [beta]`
 <h4>Arguments</h4>
+
 `num_threads` Number of threads that will run clustering in parallel. <br>
 `input` Input file, a comma delimited data file.<br>
 `output` Output file, a copy of the input file with new column containing
@@ -21,9 +23,11 @@ choosing the best subspace. Higher values will give greater priority to
 number of dimensions. (Optional, default=0.25) <br>
 
 <h4> Building </h4>
+
 ShaMC is built and tested using C++11, OpenMP 3.1, and CMAKE 2.8. <br>
 ShaMC requires gcc-4.8.5 or higher or clang-1000.10.44.4 or higher. <br><br>
 
 <b>To Build:</b> <br>
+
 1. `cmake CMakeLists.txt`<br>
 2. `make`
