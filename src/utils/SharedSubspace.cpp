@@ -11,7 +11,6 @@ DimensionSet SharedSubspace::buildSubspace(std::stringstream *dimensionSet, RowI
     std::string token;
     int support = 0;
     std::vector<int> tmpDimSet;
-    double mu_best = 0.0;
     DimensionSet subspace;
     subspace.mediodID = mediodID;
 
@@ -23,27 +22,28 @@ DimensionSet SharedSubspace::buildSubspace(std::stringstream *dimensionSet, RowI
     if (!dimensionSet || dimensionSet->str().empty())
         return subspace;
 
-    while (!std::getline(*dimensionSet, line).eof()) {
-        std::stringstream ss(line);
-
-        while (std::getline(ss, token, ' ')) {
-            if (token[0] == '(')
-                support = std::stoi(token.substr(1, token.size() - 2)); // support in parens
-            else
-                tmpDimSet.push_back(std::stoi(token));
-        }
-
-        double mu = support * pow((1 / _parameters.beta), tmpDimSet.size());
-
-        if (mu > mu_best) {
-            subspace.count = support;
-            subspace.itemset = tmpDimSet;
-            subspace.mu = mu;
-            mu_best = mu;
-        }
-
-        tmpDimSet.clear();
+    int i = -2;
+    dimensionSet->seekg(i, dimensionSet->end);
+    while (dimensionSet->peek() != '\n') {
+        dimensionSet->seekg(i--, dimensionSet->end);
     }
+    // consume newline
+    dimensionSet->get();
+    std::getline(*dimensionSet, line);
+
+    std::stringstream ss(line);
+    while (std::getline(ss, token, ' ')) {
+        if (token[0] == '(')
+            support = std::stoi(token.substr(1, token.size() - 2)); // support in parens
+        else
+            tmpDimSet.push_back(std::stoi(token));
+    }
+
+    double mu = support * pow((1 / _parameters.beta), tmpDimSet.size());
+
+    subspace.count = support;
+    subspace.itemset = tmpDimSet;
+    subspace.mu = mu;
 
     return subspace;
 }

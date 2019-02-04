@@ -25,6 +25,8 @@ void ShaMC::fit(SharedDataset &X) {
     int i;
     for (i = 0; i < parameters.maxiter; i++) {
 
+        double iter_start = omp_get_wtime();
+
         // termination conditions
         if (currentSize <= minPoints || failedAttempts >= parameters.maxAttempts) {
             std::cout << "Not enough points remaining to form cluster. Stopping." << std::endl;
@@ -70,7 +72,7 @@ void ShaMC::fit(SharedDataset &X) {
                 delete myInput;
 
                 if (omp_get_thread_num() == 0) {
-                    //std::cout << mediod_frequent_items->str() << std::endl;
+                    // std::cout << mediod_frequent_items->str() << std::endl;
                     tempset = subspace.buildSubspace(mediod_frequent_items, mediod->first);
                     // update best subspace
                     if (subspace.compareSubspaces(tempset, bestSubspace))
@@ -101,7 +103,8 @@ void ShaMC::fit(SharedDataset &X) {
             bestSubspace.numPoints += points;
         }
 
-        std::cout << "New cluster " << num_clusts_found++ << " found" << std::endl;
+        end = omp_get_wtime();
+        std::cout << "New cluster " << num_clusts_found++ << " found in " << (end - iter_start) << "s" << std::endl;
         std::cout<< "  Support: " << bestSubspace.count << std::endl;
         std::cout << "  Points: " << bestSubspace.numPoints << std::endl;
         std::cout << "  Dimensions: " << bestSubspace.itemset.size() << std::endl;

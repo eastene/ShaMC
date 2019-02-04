@@ -179,7 +179,7 @@ void FPM::FP_Tree_Mining(int minsup, OutputData *outfile, int size, int threadid
         Node *node = head->next;
 
         //print output
-        if (outfile) outfile->write(head->id, head->count, size);
+        if (outfile) outfile->write(head->id, head->count, size, mu_best);
 
         //print output but not do recursively mine
         if (head->nodes == 1) {
@@ -283,7 +283,7 @@ void FPM::FP_Tree_Mining(int minsup, OutputData *outfile, int size, int threadid
                 ctree->FP_Tree_Mining(minsup, outfile, size + 1, threadid, threadnum);
                 fp_buf->freebuf(MR, MC, MB);
             }
-        } else if (itemcount == 1 && outfile) outfile->write(heads[oldid[0]].id, ts[oldid[0]], size + 1);
+        } else if (itemcount == 1 && outfile) outfile->write(heads[oldid[0]].id, ts[oldid[0]], size + 1, mu_best);
     }
 }
 
@@ -321,7 +321,7 @@ void FPM::DFP_Tree_Mining_Parallel(int minsup, OutputData *outfile, int size, in
         Node *node = head->next;
 
         //print output
-        if (outfile) outfile->write(head->id, head->count, size);
+        if (outfile) outfile->write(head->id, head->count, size, mu_best);
 
         //print output but not do recursively mine
         if (head->nodes == 1) {
@@ -431,7 +431,7 @@ void FPM::DFP_Tree_Mining_Parallel(int minsup, OutputData *outfile, int size, in
                 }
             } else if (itemcount == 1 && outfile) {
                 UpdateK(1, head->nodes);
-                outfile->write(heads[oldid[0]].id, ts[oldid[0]], size + 1);
+                outfile->write(heads[oldid[0]].id, ts[oldid[0]], size + 1, mu_best);
             }
         }
     }
@@ -449,7 +449,7 @@ void FPM::DFP_Tree_Mining(int minsup, OutputData *outfile, int size, int threadi
         Node *node = head->next;
 
         //print output
-        if (outfile) outfile->write(head->id, head->count, size);
+        if (outfile) outfile->write(head->id, head->count, size, mu_best);
 
         //print output but not do recursively mine
         if (head->nodes == 1) {
@@ -556,7 +556,7 @@ void FPM::DFP_Tree_Mining(int minsup, OutputData *outfile, int size, int threadi
             }
         } else if (itemcount == 1 && outfile) {
             UpdateK(1, head->nodes);
-            outfile->write(heads[oldid[0]].id, ts[oldid[0]], size + 1);
+            outfile->write(heads[oldid[0]].id, ts[oldid[0]], size + 1, mu_best);
         }
     }
 }
@@ -597,7 +597,7 @@ FPM::LFP_Tree_Mining(int minsup, OutputData *outfile, int size, unsigned int *pP
         Node *node = head->next;
 
         //print output
-        if (outfile) outfile->write(head->id, head->count, size);
+        if (outfile) outfile->write(head->id, head->count, size, mu_best);
 
         //print output but not do recursively mine
         if (head->nodes == 1) {
@@ -709,7 +709,7 @@ FPM::LFP_Tree_Mining(int minsup, OutputData *outfile, int size, unsigned int *pP
                 ctree->LFP_Tree_Mining(minsup, outfile, size + 1, patterns, threadid, threadnum);
                 fp_buf->freebuf(MR, MC, MB);
             }
-        } else if (itemcount == 1 && outfile) outfile->write(heads[oldid[0]].id, ts[oldid[0]], size + 1);
+        } else if (itemcount == 1 && outfile) outfile->write(heads[oldid[0]].id, ts[oldid[0]], size + 1, mu_best);
     }
 
     if (pPatterns) for (int i = 0; i < K_LEVEL; i++) pPatterns[i] += patterns[i];
@@ -755,7 +755,7 @@ void FPM::TID_Bit_Vector_Mining(Item *items, int itemcount, int *trans, int tids
     if (itemcount > 3) quicksort_item(items, 0, itemcount - 1);
 
     if (outfile) {
-        outfile->write(items[0].id, items[0].count, size);
+        outfile->write(items[0].id, items[0].count, size, mu_best);
         if (sameitemscount) outfile->write(sameitems, sameitemscount, 0, items[0].count, size + 1, mu_best);
     }
 
@@ -780,7 +780,7 @@ void FPM::TID_Bit_Vector_Mining(Item *items, int itemcount, int *trans, int tids
             }
         }
         if (outfile) {
-            outfile->write(items[i].id, items[i].count, size);
+            outfile->write(items[i].id, items[i].count, size, mu_best);
             if (sameitemscount || newsameitemscount)
                 outfile->write(sameitems, sameitemscount + newsameitemscount, 0, items[i].count, size + 1, mu_best);
         }

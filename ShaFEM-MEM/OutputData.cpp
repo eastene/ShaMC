@@ -39,170 +39,172 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <cmath>
 
 //----------------------------------------------------------------------------------------------
-OutputData::OutputData(std::stringstream* out,int minsup, int itemcount)
-{ 
-	 lookup = 0;
-	 setcount = pos = 0; 
-	 setpos = 0; 
-	 setbuf = 0;
-	 buffer = 0;
-	 file = 0;
-	 setmaxsize(itemcount);
-	 file = out;
+OutputData::OutputData(std::stringstream *out, int minsup, int itemcount) {
+    lookup = 0;
+    setcount = pos = 0;
+    setpos = 0;
+    setbuf = 0;
+    buffer = 0;
+    file = 0;
+    setmaxsize(itemcount);
+    file = out;
 
-	 if (file) 
-	{
-		buffer = new char[IO_BUFFER_SIZE];
-		lookup = new IntToString(minsup);
-	}
+    if (file) {
+        buffer = new char[IO_BUFFER_SIZE];
+        lookup = new IntToString(minsup);
+    }
 };
 
 //----------------------------------------------------------------------------------------------
-OutputData:: ~OutputData() 
-{
-	close();
+OutputData::~OutputData() {
+    close();
 
-	if (setbuf) 
-	{
-		delete[] setpos; 
-		delete[] setbuf; 
-		setcount = 0;
-		setpos = 0;
-		setbuf = 0;
-	}
+    if (setbuf) {
+        delete[] setpos;
+        delete[] setbuf;
+        setcount = 0;
+        setpos = 0;
+        setbuf = 0;
+    }
 }
 
 //----------------------------------------------------------------------------------------------
-bool OutputData::open(std::stringstream* out,int minsup)
-{
-	if ( out->fail() ) return false;
+bool OutputData::open(std::stringstream *out, int minsup) {
+    if (out->fail()) return false;
 
-	pos = 0; 
+    pos = 0;
 
-	file = out;
+    file = out;
 //	setvbuf( file, NULL, _IONBF, 0 );
 
-	if (file) 
-	{
-		buffer = new char[IO_BUFFER_SIZE];
-		lookup = new IntToString(minsup);
-	}
+    if (file) {
+        buffer = new char[IO_BUFFER_SIZE];
+        lookup = new IntToString(minsup);
+    }
 
-	return (file?true:false);
+    return (file ? true : false);
 }
 
 //----------------------------------------------------------------------------------------------
 //file should not close until all thread compele the computation
-void OutputData::close()
-{
-	if(file)
-	{ 
-		if (pos) //output file and buffer is not empty
-		{
+void OutputData::close() {
+    if (file) {
+        if (pos) //output file and buffer is not empty
+        {
 #pragma omp critical
-			file->write(buffer, pos);
-		}
+            file->write(buffer, pos);
+        }
 
-		if (buffer) delete[] buffer; 
-		if (lookup) delete lookup;
+        if (buffer) delete[] buffer;
+        if (lookup) delete lookup;
 
-		//because it is shared --> should not close until all other thread complete 
-		//the close is control explicited in code
-		//file->flush();
-		//fclose(file);
-		
-		//file = 0;
-		buffer = 0;
-		lookup = 0;
-		pos = 0;
-	}
+        //because it is shared --> should not close until all other thread complete
+        //the close is control explicited in code
+        //file->flush();
+        //fclose(file);
+
+        //file = 0;
+        buffer = 0;
+        lookup = 0;
+        pos = 0;
+    }
 }
 
 void OutputData::flush() {
-	if(file) {
-		if (pos) //output file and buffer is not empty
-		{
+    if (file) {
+        if (pos) //output file and buffer is not empty
+        {
 #pragma omp critical
-			file->write(buffer, pos);
-			pos=0;
-		}
-	}
+            file->write(buffer, pos);
+            pos = 0;
+        }
+    }
 }
+
 //----------------------------------------------------------------------------------------------
 //set maximum size of itemset 
 //----------------------------------------------------------------------------------------------
-void OutputData::setmaxsize(int size)
-{
-	if (!setbuf) setbuf = new char[(size + 1)*20]; //20 : max lenght of an interger number
-	if (!setpos) setpos = new int[(size + 1)*20]; 
-	memset(setpos,0,sizeof(int)*(size+1));
+void OutputData::setmaxsize(int size) {
+    if (!setbuf) setbuf = new char[(size + 1) * 20]; //20 : max lenght of an interger number
+    if (!setpos) setpos = new int[(size + 1) * 20];
+    memset(setpos, 0, sizeof(int) * (size + 1));
 }
+
 //----------------------------------------------------------------------------------------------
 //this function is to be used with	IntToString verion 2
 //----------------------------------------------------------------------------------------------
-void OutputData::write(int item, int count, int size)
-{
-	setcount++;
+void OutputData::write(int item, int count, int size, double *mu_best) {
+    setcount++;
 
-	if (!file) return;
+    if (!file) return;
 
-	//write to file when buffer is full, 20 = string lenght of largest iterger number
-	if (pos > (IO_BUFFER_SIZE - 20*(size+1)))
-	{
-		// don't need critical section because fwrite is thread-safe on Linux & Windows
-		// not true for string streams, critical section added
+    //write to file when buffer is full, 20 = string lenght of largest iterger number
+    if (pos > (IO_BUFFER_SIZE - 20 * (size + 1))) {
+        // don't need critical section because fwrite is thread-safe on Linux & Windows
+        // not true for string streams, critical section added
 #pragma omp critical
-		{
-			file->write(buffer, pos);
-			pos = 0;
-		}
-	}
-	char *buf;
-	int  len;
-	
-	//print the item
-	if (buf = lookup->convertItem(item,len))
-		  memcpy(setbuf + setpos[size-1] ,buf,sizeof(char)*len);
-	else  len = sprintf(setbuf + setpos[size-1],"%d ",item);
+        {
+            file->write(buffer, pos);
+            pos = 0;
+        }
+    }
 
-	setpos[size] = setpos[size-1] + len;
+    char *buf;
+    int len;
+    int temp; // stores only the length of the count, used for pruning
 
-	//print the count (i.e. support)
-	if (buf = lookup->convertCount(count,len))
-		  memcpy(setbuf + setpos[size] ,buf,sizeof(char)*len);
-	else  len = sprintf(setbuf + setpos[size],"(%d)\n",count);
+    //print the item
+    if (buf = lookup->convertItem(item, len))
+        memcpy(setbuf + setpos[size - 1], buf, sizeof(char) * len);
+    else len = sprintf(setbuf + setpos[size - 1], "%d ", item);
 
-	len = setpos[size] + len;
+    setpos[size] = setpos[size - 1] + len;
 
-	//write the large buffer
-	memcpy(buffer + pos ,setbuf,sizeof(char)*len);
-	
-	pos += len;
+    //print the count (i.e. support)
+    if (buf = lookup->convertCount(count, len))
+        memcpy(setbuf + setpos[size], buf, sizeof(char) * len);
+    else len = sprintf(setbuf + setpos[size], "(%d)\n", count);
 
+    len = setpos[size] + len;
+
+    double mu = count * pow((1 / 0.25), size);
+    bool write = false;
+#pragma omp critical
+    {
+        if (mu > *mu_best) {
+            *mu_best = mu;
+            write = true;
+        }
+    }
+
+    //write the large buffer
+    if (write){
+        memcpy(buffer + pos, setbuf, sizeof(char) * len);
+        pos += len;
+    }
 }
 
 //----------------------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------------------
-void OutputData::write(int *items,int lenght,int level, int count,int size, double *mu_best)
-{
-	bool toRet = true;
-#pragma critical
-	{
-		if (count * pow((1 / 0.25), size) > *mu_best) {
-			*mu_best = count * pow((1 / 0.25), size);
-			toRet = false;
-		}
-	}
+void OutputData::write(int *items, int lenght, int level, int count, int size, double *mu_best) {
+    bool toRet = true;
+    double mu = count * pow((1 / 0.25), size);
+#pragma omp critical
+    {
+        if (mu > *mu_best) {
+            *mu_best = mu;
+            toRet = false;
+        }
+    }
 
-	if (toRet) return; // skip adding itemset if not better than previously mined sets
+    if (toRet) return; // skip adding itemset if not better than previously mined sets
 
-	do
-	{
-		write(items[level++],count,size);
+    do {
+        write(items[level++], count, size, mu_best);
 
-		if (level < lenght ) write(items,lenght,level,count,size+1, mu_best); // TODO: make sure this works
-		else break;
-	
-	}while(1);
+        if (level < lenght) write(items, lenght, level, count, size + 1, mu_best); // TODO: make sure this works
+        else break;
+
+    } while (1);
 }

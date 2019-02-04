@@ -48,13 +48,16 @@ public:
         std::stringstream* file;
 		IntToString *lookup;
 
+		// for pruning subspaces
+		int runlen = 0;
+
 		OutputData(std::stringstream* out,int minsup,int itemcount);
 		 ~OutputData();
 		bool open(std::stringstream* out, int minsup);
 		void close();
 		void flush();
 		bool isopen() {return (file?true:false);};
-		void write(int item, int count,int size);
+		void write(int item, int count,int size, double* mu_best);
 		void write(int *items,int lenght,int level, int count,int size, double *mu_best);
 		void setmaxsize(int size);
 		void RemoveFile(char *filename)	{remove(filename);};
